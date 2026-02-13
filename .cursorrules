@@ -1,0 +1,80 @@
+OneGo Tournament Cloud (OTC) - Project Context & Rules
+
+你是 OneGo 棋賽雲端平台 (OTC) 的全端 Coding Agent。
+主要語言：請使用繁體中文 (Traditional Chinese) 進行溝通、註解與文件撰寫。
+
+1. 產品定位與願景 (Product Vision)
+
+核心定位：台灣棋藝的數位基礎建設，支援多棋種（圍棋 Go、西洋棋 Chess、象棋 Xiangqi、五子棋 Gomoku）。
+
+關鍵價值：解決賽務人工痛點，建立選手終身數位履歷。
+
+目標受眾：
+
+參賽者/家長：焦慮且期待，強調「行動優先 (Mobile First)」與「即時資訊」。
+
+賽務方：講求控制與效率，強調「狀態機驅動」與「防呆機制」。
+
+2. 技術堆疊 (Tech Stack)
+
+Repo Structure: Monorepo (npm workspaces)
+
+Frontend: React (Vite) + TypeScript + Tailwind CSS + Lucide React
+
+Backend: Node.js + TypeScript
+
+Database: PostgreSQL (Schema-first design)
+
+Architecture: 規則外掛化 (Plugin Architecture)
+
+3. 核心架構原則 (Architecture Principles)
+
+Core Domain: Tournament (賽事) 與 Match (對局) 是核心。其他模組（報名、繳費、積分）不得侵入其基本職責。
+
+Rule Plugins: 棋種差異（如計分、勝負判定）必須透過 GameKey + rulesetVersion + packages/rules 外掛處理，不可寫死在核心流程。
+
+State Machine: 所有 API 互動必須基於清楚的狀態機轉換：
+
+賽事狀態：DRAFT -> PUBLISHED -> REGISTRATION_OPEN -> CHECKIN_OPEN -> IN_PROGRESS -> CLOSED
+
+Decoupling: 禁止將支付供應商 (Payment Provider) 細節耦合在核心流程，一律透過介面 (Interface) 隔離。
+
+4. 前端開發規範 (Frontend Guidelines)
+
+Mobile First: 所有 UI 設計必須優先考慮手機單手操作。避免過小的點擊區域。
+
+Visual Hierarchy:
+
+主色調：Indigo (#4F46E5) 用於主要行動。
+
+留白：善用大量留白減少認知負荷。
+
+Component Design:
+
+使用 Functional Components (const Component = () => {}).
+
+優先定義明確的 Interface（如 interface TournamentCardProps）。
+
+Mock Data First: 開發 UI 時，先將 Mock Data 置於檔案頂部或獨立檔案，方便未來替換為 API。
+
+UX Logic: 根據使用者角色（主辦方 vs 參賽者）切換不同的 UI 邏輯與權限視圖。
+
+5. 後端與資料規範 (Backend & Data Guidelines)
+
+Pure Functions: 業務邏輯（如積分計算、瑞士制編排、結果正規化）優先寫成可單元測試的純函式。
+
+Schema: 資料表設計優先，任何欄位變更需更新 docs/schema。
+
+Performance: 列表查詢必須考慮分頁 (Pagination) 與索引 (Indexing)。
+
+6. 開發流程與產出 (Workflow)
+
+API First: 先定義資料模型與 API 契約，再寫程式碼。
+
+Document Update: 每個功能 PR 都必須同步更新 docs/ 下的對應文件（API/狀態機/資料表）。
+
+Refactoring: 遇到過大的 Component 或 Function，優先進行拆分。
+
+Offline Awareness: 前端需考量比賽現場網路不穩的可能性（未來實作 Service Worker/Local Storage 快取）。
+
+請隨時檢視此規則，確保程式碼品質符合 OTC 的長期發展目標。

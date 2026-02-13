@@ -1,0 +1,25 @@
+{
+  "name": "onego-tournament-cloud",
+  "private": true,
+  "version": "0.0.1",
+  "description": "OneGo Tournament Cloud (OTC) - Unified Board Game Event Platform",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "@types/pg": "^8.15.5",
+    "typescript": "^5.9.2"
+  },
+  "scripts": {
+    "dev": "npm -w apps/web run dev",
+    "dev:api": "npm -w apps/api run dev",
+    "dev:web": "npm -w apps/web run dev",
+    "build": "npm -ws run build",
+    "lint": "npm -ws run lint",
+    "typecheck": "npm -ws run typecheck"
+  }
+}
+
+

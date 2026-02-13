@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>圍棋</title>
+  <rect x="8" y="10" width="48" height="44" rx="10" fill="#f4f4f5" stroke="#18181b" stroke-width="2"/>
+  <g stroke="#a1a1aa" stroke-width="1">
+    <path d="M20 18v28M28 18v28M36 18v28M44 18v28"/>
+    <path d="M16 22h32M16 30h32M16 38h32M16 46h32"/>
+  </g>
+  <circle cx="26" cy="30" r="5.8" fill="#18181b"/>
+  <circle cx="38" cy="38" r="5.8" fill="#ffffff" stroke="#18181b" stroke-width="1.5"/>
+</svg>
+

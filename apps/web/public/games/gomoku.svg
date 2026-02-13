@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>五子棋</title>
+  <rect x="8" y="10" width="48" height="44" rx="10" fill="#f4f4f5" stroke="#18181b" stroke-width="2"/>
+  <g stroke="#a1a1aa" stroke-width="1">
+    <path d="M18 20h28M18 28h28M18 36h28M18 44h28"/>
+    <path d="M22 16v32M30 16v32M38 16v32M46 16v32"/>
+  </g>
+  <g fill="#18181b">
+    <circle cx="22" cy="28" r="3.2"/>
+    <circle cx="30" cy="28" r="3.2"/>
+    <circle cx="38" cy="28" r="3.2"/>
+    <circle cx="46" cy="28" r="3.2"/>
+    <circle cx="54" cy="28" r="3.2" opacity="0"/>
+  </g>
+  <g fill="#18181b">
+    <circle cx="22" cy="36" r="3.2"/>
+    <circle cx="30" cy="36" r="3.2"/>
+    <circle cx="38" cy="36" r="3.2"/>
+    <circle cx="46" cy="36" r="3.2"/>
+    <circle cx="54" cy="36" r="3.2" opacity="0"/>
+  </g>
+  <path d="M20 40l24-24" stroke="#18181b" stroke-width="2" stroke-linecap="round" opacity="0.35"/>
+</svg>
+

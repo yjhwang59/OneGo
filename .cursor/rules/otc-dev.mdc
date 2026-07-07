@@ -1,0 +1,21 @@
+---
+description: OneGo (OTC) 專案開發規則 — 詳見 docs/10-cursor-dev-manual.md
+alwaysApply: true
+---
+
+# OneGo OTC 開發規則
+
+開發前請閱讀 `docs/10-cursor-dev-manual.md`。以下為關鍵速查：
+
+## 硬性規則
+- 計分一律由 RulesPlugin，不可在 Match/Tournament 寫死
+- 報名/報到/編排/結果上傳前須用 state-machine guard 檢查
+- API 變更須同步更新 docs/03-api-contract.md
+- Schema/實體變更須更新 docs/01-domain-model.md 與 db/schema/otc.sql
+- 前端須 Mobile First、觸控 ≥44px、RWD 斷點（docs/08-ui-rwd-guidelines.md）
+
+## 關鍵路徑
+- API: apps/api/src/server.ts | Store: apps/api/src/store.ts
+- 狀態機: packages/core/src/state-machine.ts
+- Standings: packages/core/src/standings.ts
+- Rules: packages/rules/src/games/{go,chess,xiangqi,gomoku}/

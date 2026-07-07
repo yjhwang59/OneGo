@@ -30,9 +30,9 @@
 - 積分與排名屬於 Standings（計算產物），不要把計分規則寫死在 Match
 
 ## 3. 周邊實體（MVP 需要但不侵入核心）
-- **User**：登入帳號（參賽者/家長/主辦/工作人員）
-- **Organization**：主辦單位（多租戶邊界，一個主辦可有多個賽事）
-- **OrganizationMembership**：使用者在主辦單位的角色（Owner/Admin/Staff）
+- **User**：登入帳號（參賽者/家長/主辦/工作人員）；可具平台層級角色（如 `platform_admin`），與主辦內角色分開。可經 Google OAuth 註冊，欄位含 `google_sub`（Google 帳號 sub，唯一綁定）、`avatar_url`（頭像 URL，選填）
+- **Organization**：主辦單位（多租戶邊界，一個主辦可有多個賽事）；可經 PATCH 更新 name/slug
+- **OrganizationMembership**：使用者在**該主辦單位內**的角色（Owner/主辦管理員 Admin/Staff），與系統管理員無關；可移除成員（不可移除最後一位 owner）
 - **PlayerProfile**：棋力履歷（可選，MVP 可先用基本資料）
 - **TournamentRole**：使用者在賽事的角色（Organizer/Staff）
 - **Registration**：報名（user/player -> tournament/category）

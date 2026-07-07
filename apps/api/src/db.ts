@@ -2,11 +2,19 @@ import pg from 'pg';
 
 const { Pool } = pg;
 
+/**
+ * 依 DB_TARGET 解析 DATABASE_URL
+ * DB_TARGET=local → DATABASE_URL_LOCAL
+ * DB_TARGET=remote → DATABASE_URL_REMOTE
+ * 若未設定則 fallback 至 DATABASE_URL
+ */
 export function getDatabaseUrl(): string | null {
-  const url = process.env.DATABASE_URL;
-  if (!url) return null;
-  if (typeof url !== 'string') return null;
-  if (!url.trim()) return null;
+  const target = (process.env.DB_TARGET || 'local').toLowerCase();
+  const url =
+    target === 'remote'
+      ? process.env.DATABASE_URL_REMOTE || process.env.DATABASE_URL
+      : process.env.DATABASE_URL_LOCAL || process.env.DATABASE_URL;
+  if (!url || typeof url !== 'string' || !url.trim()) return null;
   return url.trim();
 }
 
@@ -16,7 +24,10 @@ export function getPool(): pg.Pool | null {
   const url = getDatabaseUrl();
   if (!url) return null;
   if (pool) return pool;
-  pool = new Pool({ connectionString: url });
+  pool = new Pool({
+    connectionString: url,
+    connectionTimeoutMillis: 10_000,
+  });
   return pool;
 }
 

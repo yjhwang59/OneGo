@@ -4,13 +4,15 @@ import process from 'node:process';
 
 import pg from 'pg';
 
+import { resolveDatabaseUrl } from './resolve-db-url.mjs';
+
 const { Client } = pg;
 
-const databaseUrl = (process.env.DATABASE_URL ?? '').trim();
+const databaseUrl = resolveDatabaseUrl();
 if (!databaseUrl) {
-  console.error('缺少 DATABASE_URL，請先設定環境變數再執行。');
-  console.error('範例：');
-  console.error('  $env:DATABASE_URL="postgres://user:pass@localhost:5432/otc?sslmode=disable"');
+  console.error('缺少 DATABASE_URL，請先設定 .env 或環境變數。');
+  console.error('需設定 DB_TARGET (local|remote) 及對應的 DATABASE_URL_LOCAL / DATABASE_URL_REMOTE');
+  console.error('建議：在專案根目錄執行 npm run db:apply（會自動讀取 .env）');
   process.exit(1);
 }
 

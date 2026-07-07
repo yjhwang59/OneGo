@@ -39,14 +39,34 @@ begin
   end if;
 end $$;
 
--- ===== Identity（MVP 極簡：先不做完整 auth） =====
+-- ===== Identity（MVP 極簡：先不做完整 auth；id 用 text 以支援 x-user-id 模擬登入） =====
 create table if not exists users (
-  id uuid primary key default gen_random_uuid(),
+  id text primary key,
   email text unique,
   display_name text not null,
+  platform_role text null, -- 'platform_admin' 表示平台總管，與主辦內 owner/admin 無關
+  status text not null default 'active', -- 'active' / 'suspended'（停權）
+  google_sub text unique,
+  avatar_url text null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+do $$
+begin
+  if not exists (select 1 from information_schema.columns where table_schema = current_schema() and table_name = 'users' and column_name = 'platform_role') then
+    alter table users add column platform_role text null;
+  end if;
+  if not exists (select 1 from information_schema.columns where table_schema = current_schema() and table_name = 'users' and column_name = 'status') then
+    alter table users add column status text not null default 'active';
+  end if;
+  if not exists (select 1 from information_schema.columns where table_schema = current_schema() and table_name = 'users' and column_name = 'google_sub') then
+    alter table users add column google_sub text unique;
+  end if;
+  if not exists (select 1 from information_schema.columns where table_schema = current_schema() and table_name = 'users' and column_name = 'avatar_url') then
+    alter table users add column avatar_url text null;
+  end if;
+end $$;
 
 -- ===== Multi-Organization（多主辦單位，多租戶邊界）=====
 create table if not exists organizations (
@@ -61,7 +81,7 @@ create table if not exists organizations (
 create table if not exists organization_memberships (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references organizations(id) on delete cascade,
-  user_id uuid not null references users(id) on delete restrict,
+  user_id text not null references users(id) on delete restrict,
   role text not null, -- owner/admin/staff（先用 text，後續可 enum）
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -90,7 +110,7 @@ create table if not exists tournaments (
 create table if not exists tournament_roles (
   id uuid primary key default gen_random_uuid(),
   tournament_id uuid not null references tournaments(id) on delete cascade,
-  user_id uuid not null references users(id) on delete restrict,
+  user_id text not null references users(id) on delete restrict,
   role text not null, -- organizer/staff/referee...（先用 text，後續可 enum）
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -105,8 +125,12 @@ create table if not exists matches (
   tournament_id uuid not null references tournaments(id) on delete cascade,
   round_no int not null,
   table_no int null,
-  player_a_id uuid not null,
-  player_b_id uuid not null,
+  -- 對局所屬組別（分組賽事）；null 代表未分組（單一組）
+  category_key text null,
+  player_a_id text not null,
+  player_b_id text not null,
+  -- 先手方：'A' / 'B'；null 代表未指定（如輪空或無先手概念）
+  first_move char(1) null,
   status match_status not null default 'scheduled',
   -- result 以 JSONB 儲存「正規化結果」，其 schema 由 rules 外掛版本負責
   result jsonb null,
@@ -120,11 +144,15 @@ create table if not exists matches (
 
 create index if not exists idx_matches_tournament_round on matches(tournament_id, round_no);
 
+-- 既有資料庫升級用（分組賽事、先手）：對已建立的 matches 表補上欄位（可重複執行）
+alter table matches add column if not exists category_key text null;
+alter table matches add column if not exists first_move char(1) null;
+
 -- ===== 周邊：Registration / Payment / Check-in =====
 create table if not exists registrations (
   id uuid primary key default gen_random_uuid(),
   tournament_id uuid not null references tournaments(id) on delete cascade,
-  user_id uuid not null references users(id) on delete restrict,
+  user_id text not null references users(id) on delete restrict,
   status registration_status not null default 'created',
   -- category/group 先用 text，後續可獨立表（組別、段位、年齡組）
   category_key text null,

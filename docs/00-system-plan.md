@@ -22,8 +22,8 @@
 - **Registration**：報名資料（誰報名哪個賽事/組別）
 - **Payment**：付款紀錄（以 `PaymentProvider` 介面抽象）
 - **Check-in**：報到/現場狀態（出席、退賽、替補、調整）
-- **Pairing**：編排策略與產物（Swiss/循環/淘汰）；MVP 先做最簡
-- **Standings**：積分/排名計算（優先做可測試純函式）
+- **Pairing**：編排策略與產物；MVP 已實作基礎瑞士制（`packages/pairing`，同分組配對、避免重複對局、bye）
+- **Standings**：積分/排名計算（可測試純函式，含 tiebreak：勝場、直接勝負、對手分）
 
 ## 4. 多棋種支援策略（規則外掛）
 - 以 `GameKey`（go/chess/xiangqi/gomoku）標識棋種
@@ -51,7 +51,8 @@
 ## 6. 交付節奏（MVP）
 1. 文件：資料模型 + API 契約 + 狀態機（`docs/`、`db/schema/`）
 2. 後端最小可用：建立賽事、報名、付款（假金流）、報到、建立對局、回報結果、查排名
-3. 前端 MVP：參賽者入口 + 主辦後台
-4. 編排擴充：Swiss / 循環賽 / 淘汰；金流整合；權限與稽核
+3. **第一階段已完成**：本機 PostgreSQL 接線（Repository 層）、瑞士制配對、排名 tiebreak；無 DB 時自動 fallback 至 InMemory。
+4. 前端 MVP：參賽者入口 + 主辦後台，**均須符合 RWD UI 設計原則**（詳見 `docs/08-ui-rwd-guidelines.md`）
+5. 編排擴充：進階 Swiss / 循環賽 / 淘汰；金流整合；權限與稽核；遠端部署
 
 

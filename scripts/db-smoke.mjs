@@ -1,9 +1,11 @@
 import process from 'node:process';
 import pg from 'pg';
 
-const databaseUrl = (process.env.DATABASE_URL ?? '').trim();
+import { resolveDatabaseUrl } from './resolve-db-url.mjs';
+
+const databaseUrl = resolveDatabaseUrl();
 if (!databaseUrl) {
-  console.error('缺少 DATABASE_URL');
+  console.error('缺少 DATABASE_URL，請先設定 .env 或環境變數。');
   process.exit(1);
 }
 

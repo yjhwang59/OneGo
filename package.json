@@ -10,15 +10,30 @@
   "devDependencies": {
     "@types/node": "^24.3.0",
     "@types/pg": "^8.15.5",
+    "cross-env": "^7.0.3",
     "typescript": "^5.9.2"
+  },
+  "optionalDependencies": {
+    "@esbuild/win32-arm64": "0.27.1"
   },
   "scripts": {
     "dev": "npm -w apps/web run dev",
     "dev:api": "npm -w apps/api run dev",
+    "dev:api:local": "cross-env DB_TARGET=local npm -w apps/api run dev",
+    "dev:api:remote": "cross-env DB_TARGET=remote npm -w apps/api run dev",
     "dev:web": "npm -w apps/web run dev",
     "build": "npm -ws run build",
     "lint": "npm -ws run lint",
-    "typecheck": "npm -ws run typecheck"
+    "typecheck": "npm -ws run typecheck",
+    "test": "npm run test --workspaces --if-present",
+    "db:apply": "node --env-file=.env scripts/db-apply-schema.mjs",
+    "db:smoke": "node --env-file=.env scripts/db-smoke.mjs",
+    "seed:tournament": "node scripts/seed-tournament-flow.mjs",
+    "grant:admin": "node --env-file=.env scripts/grant-platform-admin.mjs",
+    "rbac:seed": "node --env-file=.env scripts/seed-rbac.mjs",
+    "test:accounts": "node --env-file=.env scripts/seed-test-accounts.mjs",
+    "e2e:full-tournament": "node scripts/e2e-full-tournament.mjs",
+    "start": "powershell -ExecutionPolicy Bypass -File scripts/start.ps1"
   }
 }
 

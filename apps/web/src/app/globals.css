@@ -1,26 +1,132 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * OneGo OTC — 設計 Token 層（P0）
+ * 單一來源：品牌色、棋種色、語意狀態色、圓角/陰影/間距 scale。
+ * 深色模式以 prefers-color-scheme 覆寫（tailwind darkMode: "media"）。
+ * 所有前景/背景組合皆以 WCAG AA（正文 ≥ 4.5:1）為目標挑選。
+ */
 
 :root {
+  /* 基礎 */
   --background: #ffffff;
   --foreground: #171717;
-}
+  --surface: #ffffff;
+  --surface-muted: #f8fafc;
+  --border: #e4e4e7;
+  --muted-fg: #52525b;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* 品牌（teal，呼應棋盤/沉穩） */
+  --brand: #0d9488;
+  --brand-fg: #ffffff;
+  --brand-hover: #0f766e;
+  --brand-subtle-bg: #ccfbf1;
+  --brand-subtle-fg: #115e59;
+  --ring: #14b8a6;
+
+  /* 棋種色（badge/dot 用） */
+  --game-go: #334155;
+  --game-chess: #7c3aed;
+  --game-xiangqi: #dc2626;
+  --game-gomoku: #2563eb;
+
+  /* 語意色調（bg / fg / border 三件組） */
+  --tone-neutral-bg: #f1f5f9;
+  --tone-neutral-fg: #334155;
+  --tone-neutral-border: #cbd5e1;
+
+  --tone-info-bg: #dbeafe;
+  --tone-info-fg: #1e40af;
+  --tone-info-border: #bfdbfe;
+
+  --tone-success-bg: #dcfce7;
+  --tone-success-fg: #166534;
+  --tone-success-border: #bbf7d0;
+
+  --tone-warning-bg: #fef3c7;
+  --tone-warning-fg: #92400e;
+  --tone-warning-border: #fde68a;
+
+  --tone-purple-bg: #ede9fe;
+  --tone-purple-fg: #6d28d9;
+  --tone-purple-border: #ddd6fe;
+
+  --tone-muted-bg: #f4f4f5;
+  --tone-muted-fg: #52525b;
+  --tone-muted-border: #e4e4e7;
+
+  --tone-danger-bg: #fee2e2;
+  --tone-danger-fg: #b91c1c;
+  --tone-danger-border: #fecaca;
+
+  /* 圓角 / 陰影 / 間距 scale（收斂現有 rounded-2xl 風格） */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.10);
+  --space-gutter: 1rem;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --surface: #0a0a0a;
+    --surface-muted: #18181b;
+    --border: #27272a;
+    --muted-fg: #a1a1aa;
+
+    --brand: #14b8a6;
+    --brand-fg: #042f2e;
+    --brand-hover: #2dd4bf;
+    --brand-subtle-bg: #134e4a;
+    --brand-subtle-fg: #99f6e4;
+    --ring: #2dd4bf;
+
+    --game-go: #cbd5e1;
+    --game-chess: #a78bfa;
+    --game-xiangqi: #f87171;
+    --game-gomoku: #60a5fa;
+
+    --tone-neutral-bg: #1e293b;
+    --tone-neutral-fg: #cbd5e1;
+    --tone-neutral-border: #334155;
+
+    --tone-info-bg: #172554;
+    --tone-info-fg: #93c5fd;
+    --tone-info-border: #1e3a8a;
+
+    --tone-success-bg: #052e16;
+    --tone-success-fg: #86efac;
+    --tone-success-border: #14532d;
+
+    --tone-warning-bg: #451a03;
+    --tone-warning-fg: #fcd34d;
+    --tone-warning-border: #78350f;
+
+    --tone-purple-bg: #2e1065;
+    --tone-purple-fg: #c4b5fd;
+    --tone-purple-border: #4c1d95;
+
+    --tone-muted-bg: #27272a;
+    --tone-muted-fg: #a1a1aa;
+    --tone-muted-border: #3f3f46;
+
+    --tone-danger-bg: #450a0a;
+    --tone-danger-fg: #fca5a5;
+    --tone-danger-border: #7f1d1d;
+
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+    --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.5);
   }
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }

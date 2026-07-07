@@ -96,8 +96,12 @@ export type Match = {
   tournamentId: Id;
   roundNo: number;
   tableNo?: number;
+  /** 對局所屬組別（分組賽事）；未分組賽事為 undefined（單一組） */
+  categoryKey?: string;
   playerAId: Id;
   playerBId: Id;
+  /** 先手方（A/B）；輪空/未指定為 undefined */
+  firstMove?: 'A' | 'B';
   status: MatchStatus;
   result?: NormalizedMatchResult;
   createdAt: string;
@@ -105,10 +109,18 @@ export type Match = {
   finishedAt?: string;
 };
 
+export type UserStatus = 'active' | 'suspended';
+
 export type User = {
   id: Id;
   displayName: string;
   email?: string;
+  platformRole?: 'platform_admin' | null;
+  /** 帳號狀態；未設定視為 active。suspended 者無法呼叫需登入的 API。 */
+  status?: UserStatus;
+  avatarUrl?: string | null;
+  /** Internal: for ensureFromGoogle lookup when using InMemory store */
+  googleSub?: string;
   createdAt: string;
 };
 
@@ -138,6 +150,14 @@ export class InMemoryStore {
     const u: User = { id: userId, displayName: `User-${userId.slice(0, 6)}`, createdAt: this.nowIso() };
     this.users.set(u.id, u);
     return u;
+  }
+
+  /** Find user by google_sub (InMemory: iterate). */
+  getUserByGoogleSub(sub: string): User | undefined {
+    for (const u of this.users.values()) {
+      if (u.googleSub === sub) return u;
+    }
+    return undefined;
   }
 }
 

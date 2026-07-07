@@ -13,7 +13,13 @@ OneGo棋賽雲整合「線上報名與繳費」「現場報到與對局編排」
 - `docs/`：系統規劃、資料模型、API 契約、狀態機（每個功能 PR 都要更新）
 - `db/schema/`：資料表草案（先從核心 Tournament/Match 開始）
 - `apps/`：可執行應用（API、Web）
-- `packages/`：共用套件（核心型別、rules 外掛等）
+- `packages/`：共用套件（core、rules、pairing）
+
+## 資料儲存說明（MVP 階段）
+
+**API 依 `DATABASE_URL` 自動切換**：
+- **有設定**（本機或遠端 PostgreSQL）：透過 Repository 層持久化，資料重啟後保留。需先套用 `db/schema/otc.sql`（見 `docs/06-db-setup.md`）。
+- **未設定**：使用 InMemory Store，重啟即清空，適合本機開發與流程驗證。
 
 ## 如何開始（目前）
 1. 先閱讀 `docs/00-system-plan.md`
@@ -21,7 +27,6 @@ OneGo棋賽雲整合「線上報名與繳費」「現場報到與對局編排」
 3. 依 `docs/03-api-contract.md` 開始做 MVP API
 4. 競品/分期參考：`docs/04-competitive-notes-playgo.md`
 5. DB（Postgres / Docker）：`docs/06-db-setup.md`
+6. **協作與首次設定**：請見 [CONTRIBUTING.md](CONTRIBUTING.md) 的「新成員設定」與 PR 流程。
 
 > 補充：若你是 Windows on ARM（Snapdragon），Docker Desktop 可能因 WSL mount vhd 限制而無法啟動；請直接參考 `docs/06-db-setup.md` 的方案 B/C。
-
-

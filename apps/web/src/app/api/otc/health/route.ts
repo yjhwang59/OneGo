@@ -9,12 +9,12 @@ export async function GET() {
     const res = await fetch(`${base}/api/health`, { cache: "no-store" });
     const data = await res.json().catch(() => null);
     return NextResponse.json({ ok: res.ok, upstream: data }, { status: res.ok ? 200 : res.status });
-  } catch (e: any) {
+  } catch (e: unknown) {
     return NextResponse.json(
       {
         ok: false,
-        error: e?.message ?? String(e),
-        hint: "請確認 apps/api 是否已啟動（預設 http://127.0.0.1:3001），或設定 OTC_API_BASE。",
+        error: e instanceof Error ? e.message : String(e),
+        hint: "請確認 apps/api 是否已啟動（預設 http://127.0.0.1:3875），或設定 OTC_API_BASE。",
       },
       { status: 502 }
     );

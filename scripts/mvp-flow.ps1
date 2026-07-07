@@ -29,7 +29,7 @@ function GetJson($Url, $Headers) {
   return Invoke-RestMethod -Method GET -Uri $Url -Headers $Headers
 }
 
-$base = "http://localhost:3001"
+$base = "http://localhost:3875"
 Wait-Health $base
 
 $orgAdmin = @{ 'x-user-id' = 'org-admin' }
@@ -112,6 +112,20 @@ Write-Host "14) alice me matches"
 $meM = GetJson "$base/api/me/tournaments/$tId/matches" $aliceH
 $meM | ConvertTo-Json -Depth 10 | Write-Output
 
-Write-Host "OK: full MVP flow finished."
+Write-Host "15) generate round 2 (Swiss)"
+$ms2 = PostJson "$base/api/tournaments/$tId/pairings/events/generate-round" $orgAdmin @{ roundNo = 2 }
+if ($ms2.Count -lt 1) { throw "round 2: no matches created" }
+$matchId2 = $ms2[0].id
+Write-Host "round2MatchId=$matchId2"
+
+Write-Host "16) submit round 2 result (B wins)"
+$mres2 = PostJson "$base/api/matches/$matchId2/result" $orgAdmin @{ result = @{ kind = 'win'; winner = 'B'; by = 'resign' } }
+Write-Host "matchStatus=$($mres2.status)"
+
+Write-Host "17) standings after 2 rounds"
+$st2 = GetJson "$base/api/tournaments/$tId/standings" $orgAdmin
+$st2 | ConvertTo-Json -Depth 10 | Write-Output
+
+Write-Host "OK: full MVP flow (incl. multi-round Swiss) finished."
 
 

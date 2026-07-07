@@ -1,11 +1,11 @@
 ### Health
-GET http://localhost:3001/api/health
+GET http://localhost:3875/api/health
 
 ### API index
-GET http://localhost:3001/api
+GET http://localhost:3875/api
 
 ### Create organization (as org-admin)
-POST http://localhost:3001/api/organizations
+POST http://localhost:3875/api/organizations
 content-type: application/json
 x-user-id: org-admin
 
@@ -15,7 +15,7 @@ x-user-id: org-admin
 }
 
 ### List public tournaments (semi-public)
-GET http://localhost:3001/api/public/tournaments
+GET http://localhost:3875/api/public/tournaments
 
 
 

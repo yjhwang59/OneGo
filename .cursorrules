@@ -19,11 +19,11 @@ OneGo Tournament Cloud (OTC) - Project Context & Rules
 
 Repo Structure: Monorepo (npm workspaces)
 
-Frontend: React (Vite) + TypeScript + Tailwind CSS + Lucide React
+Frontend: Next.js + React + TypeScript + Tailwind CSS
 
-Backend: Node.js + TypeScript
+Backend: Node.js + TypeScript (Fastify)
 
-Database: PostgreSQL (Schema-first design)
+Database: PostgreSQL (Schema-first design)，目前 API 使用 InMemory Store（重啟即清空），DB schema 為未來持久化準備。
 
 Architecture: 規則外掛化 (Plugin Architecture)
 
@@ -33,9 +33,9 @@ Core Domain: Tournament (賽事) 與 Match (對局) 是核心。其他模組（�
 
 Rule Plugins: 棋種差異（如計分、勝負判定）必須透過 GameKey + rulesetVersion + packages/rules 外掛處理，不可寫死在核心流程。
 
-State Machine: 所有 API 互動必須基於清楚的狀態機轉換：
+State Machine: 所有 API 互動必須基於清楚的狀態機轉換（詳見 docs/02-state-machines.md）：
 
-賽事狀態：DRAFT -> PUBLISHED -> REGISTRATION_OPEN -> CHECKIN_OPEN -> IN_PROGRESS -> CLOSED
+賽事狀態：draft -> published -> checkin_open -> pairing_ready -> in_progress -> closed；另可從多狀態 -> cancelled。
 
 Decoupling: 禁止將支付供應商 (Payment Provider) 細節耦合在核心流程，一律透過介面 (Interface) 隔離。
 
@@ -63,7 +63,7 @@ UX Logic: 根據使用者角色（主辦方 vs 參賽者）切換不同的 UI �
 
 Pure Functions: 業務邏輯（如積分計算、瑞士制編排、結果正規化）優先寫成可單元測試的純函式。
 
-Schema: 資料表設計優先，任何欄位變更需更新 docs/schema。
+Schema: 資料表設計優先，任何欄位變更需更新 db/schema/ 與 docs/ 對應文件。
 
 Performance: 列表查詢必須考慮分頁 (Pagination) 與索引 (Indexing)。
 

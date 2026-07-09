@@ -1,6 +1,6 @@
 {
   "name": "@otc/api",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,10 +13,10 @@
     "lint": "echo ok"
   },
   "dependencies": {
-    "@otc/core": "0.0.1",
-    "@otc/pairing": "0.0.1",
-    "@otc/rating": "0.0.1",
-    "@otc/rules": "0.0.1",
+    "@otc/core": "0.1.0",
+    "@otc/pairing": "0.1.0",
+    "@otc/rating": "0.1.0",
+    "@otc/rules": "0.1.0",
     "@sinclair/typebox": "^0.34.41",
     "dotenv": "^17.3.1",
     "fastify": "^5.3.0",

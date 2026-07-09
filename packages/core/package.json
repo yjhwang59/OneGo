@@ -1,6 +1,6 @@
 {
   "name": "@otc/core",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "main": "./dist/index.js",
@@ -12,7 +12,7 @@
     "lint": "echo ok"
   },
   "dependencies": {
-    "@otc/rules": "0.0.1"
+    "@otc/rules": "0.1.0"
   },
   "devDependencies": {
     "vitest": "^2.1.0"

@@ -53,6 +53,7 @@ export default function TournamentDetailPage({
   const [registrationsLoading, setRegistrationsLoading] = useState(false);
   const [categories, setCategories] = useState<Array<{ key: string; displayName: string; capacity?: number | null }>>([]);
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [openRegistrationGroup, setOpenRegistrationGroup] = useState<string | null>(null);
   const { userId, isAuthenticated } = useUser();
   const router = useRouter();
 
@@ -305,6 +306,7 @@ export default function TournamentDetailPage({
         {/* 分組報名清單 */}
         <section className="mt-8 border-t border-zinc-200 pt-6 dark:border-zinc-800">
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">分組報名清單</h2>
+          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">先瀏覽各組人數，點選組別列即可展開選手清單。</p>
           {registrationsLoading ? (
             <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">載入中…</p>
           ) : registrations.length === 0 ? (
@@ -312,38 +314,56 @@ export default function TournamentDetailPage({
           ) : (
             (() => {
               const byGroup = (() => {
-                const map = new Map<string, string[]>();
+                const map = new Map<string, { label: string; list: string[]; order: number; capacity: number | null }>();
                 for (const r of registrations) {
                   const key = (r.categoryKey?.trim() || "未分組");
-                  const label = categories.find((c) => c.key === r.categoryKey)?.displayName ?? key;
-                  if (!map.has(label)) map.set(label, []);
-                  map.get(label)!.push(r.userId);
+                  const catIndex = categories.findIndex((c) => c.key === r.categoryKey);
+                  const cat = catIndex >= 0 ? categories[catIndex] : null;
+                  if (!map.has(key)) {
+                    map.set(key, {
+                      label: cat?.displayName ?? key,
+                      list: [],
+                      order: catIndex >= 0 ? catIndex : 999,
+                      capacity: cat?.capacity ?? null,
+                    });
+                  }
+                  map.get(key)!.list.push(r.userId);
                 }
-                const keys = Array.from(map.keys()).sort((a, b) => {
-                  if (a === "未分組") return -1;
-                  if (b === "未分組") return 1;
-                  return a.localeCompare(b);
-                });
-                return keys.map((groupKey) => ({ groupKey, list: map.get(groupKey)! }));
+                return Array.from(map.entries())
+                  .sort((a, b) => a[1].order - b[1].order || a[1].label.localeCompare(b[1].label))
+                  .map(([groupKey, value]) => ({ groupKey, ...value, list: value.list.sort((a, b) => a.localeCompare(b)) }));
               })();
               return (
-                <div className="mt-3 space-y-6">
-                  {byGroup.map(({ groupKey, list }) => (
-                    <div key={groupKey}>
-                      <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                        分組：{groupKey}
-                        <span className="ml-2 text-zinc-500 dark:text-zinc-400">（{list.length} 人）</span>
-                      </h3>
-                      <ul className="mt-2 flex flex-wrap gap-2">
-                        {list.map((uid) => (
-                          <li
-                            key={uid}
-                            className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-100"
-                          >
-                            {maskName(uid)}
-                          </li>
-                        ))}
-                      </ul>
+                <div className="mt-3 overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800">
+                  {byGroup.map(({ groupKey, label, list, capacity }) => (
+                    <div key={groupKey} className="border-b border-zinc-200 last:border-b-0 dark:border-zinc-800">
+                      <button
+                        type="button"
+                        onClick={() => setOpenRegistrationGroup((v) => (v === groupKey ? null : groupKey))}
+                        className="flex min-h-[56px] w-full items-center justify-between gap-3 bg-white px-4 py-3 text-left transition hover:bg-zinc-50 dark:bg-zinc-950 dark:hover:bg-zinc-900"
+                      >
+                        <span>
+                          <span className="font-medium text-zinc-900 dark:text-zinc-50">{label}</span>
+                          {capacity != null && <span className="ml-2 text-xs text-zinc-500 dark:text-zinc-400">上限 {capacity}</span>}
+                        </span>
+                        <span className="flex items-center gap-3 text-sm text-zinc-500 dark:text-zinc-400">
+                          <span>{list.length} 人</span>
+                          <span aria-hidden="true">{openRegistrationGroup === groupKey ? "收合" : "展開"}</span>
+                        </span>
+                      </button>
+                      {openRegistrationGroup === groupKey && (
+                        <ul className="grid gap-2 bg-zinc-50 p-4 dark:bg-zinc-900/60 sm:grid-cols-2 lg:grid-cols-3">
+                          {list.map((uid, index) => (
+                            <li
+                              key={uid}
+                              className="flex items-center justify-between rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                            >
+                              <span className="text-xs text-zinc-400">{index + 1}</span>
+                              <span className="font-medium">{maskName(uid)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -354,48 +374,71 @@ export default function TournamentDetailPage({
 
         {/* 公開排名 */}
         <section className="mt-8 border-t border-zinc-200 pt-6 dark:border-zinc-800">
-          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">排名</h2>
-          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">為保護參賽者隱私，公開榜單姓名已部分遮罩。</p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">分組成績</h2>
+              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">先選擇組別，再查看該組瑞士制矩陣、各輪對手與名次。</p>
+            </div>
+            <Link
+              href={`/tournaments/${id}/results`}
+              className="inline-flex min-h-[40px] items-center justify-center rounded-lg border border-zinc-200 px-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              全部組別
+            </Link>
+          </div>
           {standingsLoading ? (
             <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">載入中…</p>
           ) : standings.length === 0 ? (
             <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">尚無排名資料（需有已結束的對局）。</p>
           ) : (
-            <div className="mt-3 space-y-8">
+            <div className="mt-4 overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800">
               {(() => {
-                const labelOf = (k: string | null | undefined) =>
-                  categories.find((c) => c.key === k)?.displayName ?? (k?.trim() || "未分組");
+                const categoryOrder = new Map(categories.map((c, i) => [c.key, i]));
+                const registrationCounts = new Map<string, number>();
+                for (const r of registrations) {
+                  const key = r.categoryKey?.trim() || "未分組";
+                  registrationCounts.set(key, (registrationCounts.get(key) ?? 0) + 1);
+                }
                 const map = new Map<string, typeof standings>();
                 for (const row of standings) {
-                  const g = labelOf(row.categoryKey);
-                  if (!map.has(g)) map.set(g, []);
-                  map.get(g)!.push(row);
+                  const key = row.categoryKey?.trim() || "未分組";
+                  if (!map.has(key)) map.set(key, []);
+                  map.get(key)!.push(row);
                 }
-                return [...map.entries()].map(([groupLabel, rows]) => (
-                  <div key={groupLabel}>
-                    <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">分組：{groupLabel}</h3>
-                    <div className="mt-2 overflow-x-auto">
-                      <table className="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">
-                        <thead>
-                          <tr>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">名次</th>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">選手</th>
-                            <th className="px-3 py-2 text-right text-xs font-medium text-zinc-500 dark:text-zinc-400">積分</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-                          {rows.map((row, i) => (
-                            <tr key={row.playerId}>
-                              <td className="px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100">{i + 1}</td>
-                              <td className="px-3 py-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">{maskName(row.playerId)}</td>
-                              <td className="px-3 py-2 text-right text-sm text-zinc-900 dark:text-zinc-100">{row.points}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                ));
+                return [...map.entries()]
+                  .sort((a, b) => (categoryOrder.get(a[0]) ?? 999) - (categoryOrder.get(b[0]) ?? 999) || a[0].localeCompare(b[0]))
+                  .map(([groupKey, rows]) => {
+                    const cat = categories.find((c) => c.key === groupKey);
+                    const label = cat?.displayName ?? groupKey;
+                    const sorted = [...rows].sort((a, b) => b.points - a.points || (b.wins ?? 0) - (a.wins ?? 0) || a.playerId.localeCompare(b.playerId));
+                    const leader = sorted[0];
+                    const played = rows.reduce((sum, row) => sum + (row.played ?? 0), 0);
+                    return (
+                      <Link
+                        key={groupKey}
+                        href={`/tournaments/${id}/results?categoryKey=${encodeURIComponent(groupKey)}`}
+                        className="grid min-h-[72px] gap-2 border-b border-zinc-200 bg-white px-4 py-3 transition last:border-b-0 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:bg-zinc-900 sm:grid-cols-[1.1fr_0.55fr_0.7fr_1fr_auto] sm:items-center"
+                      >
+                        <div>
+                          <p className="font-semibold text-zinc-900 dark:text-zinc-50">{label}</p>
+                          <p className="text-xs text-zinc-500 dark:text-zinc-400">{registrationCounts.get(groupKey) ?? rows.length} 人</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-zinc-500 dark:text-zinc-400">已賽局數</p>
+                          <p className="font-medium text-zinc-900 dark:text-zinc-100">{Math.floor(played / 2)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-zinc-500 dark:text-zinc-400">最高分</p>
+                          <p className="font-medium text-zinc-900 dark:text-zinc-100">{leader?.points ?? "—"}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-zinc-500 dark:text-zinc-400">目前領先</p>
+                          <p className="truncate font-medium text-zinc-900 dark:text-zinc-100">{leader ? maskName(leader.playerId) : "—"}</p>
+                        </div>
+                        <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400">查看戰績 →</span>
+                      </Link>
+                    );
+                  });
               })()}
             </div>
           )}

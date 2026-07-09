@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useUser } from "@/contexts/UserContext";
 import {
@@ -56,6 +56,7 @@ type Match = {
   categoryKey?: string | null;
   playerAId: string;
   playerBId: string;
+  firstMove?: "A" | "B" | null;
   status: string;
   result?: { kind: string; winner?: string } | null;
 };
@@ -115,7 +116,6 @@ type TabId = "overview" | "registrations" | "checkin" | "pairing" | "standings" 
 
 export default function AdminTournamentDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const id = params.id as string;
   const { userId, isAuthenticated, platformRole } = useUser();
 
@@ -423,7 +423,6 @@ export default function AdminTournamentDetailPage() {
           canPair={canPair}
           manageable={manageable}
           tournamentId={id}
-          gameKey={tournament.gameKey}
           userId={userId!}
           reload={loadMatches}
           setActionError={setActionError}
@@ -983,7 +982,6 @@ function PairingTab({
   canPair,
   manageable,
   tournamentId,
-  gameKey,
   userId,
   reload,
   setActionError,
@@ -992,13 +990,13 @@ function PairingTab({
   canPair: boolean;
   manageable: boolean;
   tournamentId: string;
-  gameKey: string;
   userId: string;
   reload: () => void;
   setActionError: (s: string | null) => void;
 }) {
   const [roundNo, setRoundNo] = useState("1");
   const [busy, setBusy] = useState(false);
+  const [printRound, setPrintRound] = useState<number | null>(null);
   const generate = async () => {
     setBusy(true);
     setActionError(null);
@@ -1022,11 +1020,34 @@ function PairingTab({
       if (!map.has(m.roundNo)) map.set(m.roundNo, []);
       map.get(m.roundNo)!.push(m);
     }
-    return [...map.entries()].sort((a, b) => a[0] - b[0]);
+    return [...map.entries()]
+      .map(([round, list]) => [round, [...list].sort((a, b) => (a.tableNo ?? 9999) - (b.tableNo ?? 9999) || a.id.localeCompare(b.id))] as [number, Match[]])
+      .sort((a, b) => a[0] - b[0]);
   }, [matches]);
+  const printList = printRound == null ? [] : byRound.find(([r]) => r === printRound)?.[1] ?? [];
 
   return (
     <div className="mt-6 space-y-5">
+      <style jsx global>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          .pairing-print-area,
+          .pairing-print-area * {
+            visibility: visible;
+          }
+          .pairing-print-area {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            background: white;
+          }
+          .print-hidden {
+            display: none !important;
+          }
+        }
+      `}</style>
       {manageable && canPair && (
         <Card>
           <CardBody className="flex flex-wrap items-end gap-3">
@@ -1050,15 +1071,98 @@ function PairingTab({
       ) : (
         byRound.map(([r, list]) => (
           <div key={r}>
-            <h3 className="mb-2 text-sm font-semibold text-foreground">第 {r} 輪 <span className="font-normal text-muted-fg">（{list.length} 場）</span></h3>
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold text-foreground">第 {r} 輪 <span className="font-normal text-muted-fg">（{list.length} 場）</span></h3>
+              <Button variant="secondary" size="sm" onClick={() => setPrintRound(r)}>
+                列印預覽
+              </Button>
+            </div>
             <ul className="space-y-2">
               {list.map((m) => (
-                <MatchRow key={m.id} match={m} manageable={manageable} gameKey={gameKey} userId={userId} reload={reload} />
+                <MatchRow key={m.id} match={m} manageable={manageable} userId={userId} reload={reload} />
               ))}
             </ul>
           </div>
         ))
       )}
+      {printRound != null && (
+        <PairingPrintPreview
+          roundNo={printRound}
+          matches={printList}
+          onClose={() => setPrintRound(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function PairingPrintPreview({
+  roundNo,
+  matches,
+  onClose,
+}: {
+  roundNo: number;
+  matches: Match[];
+  onClose: () => void;
+}) {
+  const grouped = useMemo(() => {
+    const map = new Map<string, Match[]>();
+    for (const m of matches) {
+      const group = m.categoryKey?.trim() || "未分組";
+      if (!map.has(group)) map.set(group, []);
+      map.get(group)!.push(m);
+    }
+    return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  }, [matches]);
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/45 p-4 print:static print:bg-white">
+      <div className="mx-auto flex max-h-[92vh] max-w-5xl flex-col overflow-hidden rounded-token-xl bg-surface shadow-token-lg print:max-h-none print:max-w-none print:overflow-visible print:rounded-none print:shadow-none">
+        <div className="print-hidden flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
+          <div>
+            <h3 className="text-lg font-semibold text-foreground">第 {roundNo} 輪出賽單預覽</h3>
+            <p className="text-sm text-muted-fg">確認桌次與選手後可直接列印。</p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={onClose}>關閉</Button>
+            <Button onClick={() => window.print()}>列印</Button>
+          </div>
+        </div>
+        <div className="pairing-print-area overflow-auto bg-white p-6 text-zinc-950 print:overflow-visible">
+          <div className="mb-5 flex items-end justify-between border-b-2 border-zinc-900 pb-3">
+            <div>
+              <h1 className="text-2xl font-bold">第 {roundNo} 輪出賽單</h1>
+              <p className="mt-1 text-sm text-zinc-600">列印時間：{new Date().toLocaleString("zh-TW")}</p>
+            </div>
+            <p className="text-sm text-zinc-600">共 {matches.length} 場</p>
+          </div>
+          {grouped.map(([group, list]) => (
+            <section key={group} className="mb-6 break-inside-avoid">
+              <h2 className="mb-2 text-base font-bold">分組：{group}</h2>
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr>
+                    {["桌次", "A 方", "B 方", "先手", "結果簽名"].map((h) => (
+                      <th key={h} className="border border-zinc-800 bg-zinc-100 px-2 py-2 text-left">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {list.map((m) => (
+                    <tr key={m.id}>
+                      <td className="w-16 border border-zinc-800 px-2 py-3 font-semibold">{m.tableNo ?? "—"}</td>
+                      <td className="border border-zinc-800 px-2 py-3">{m.playerAId}</td>
+                      <td className="border border-zinc-800 px-2 py-3">{m.playerBId}</td>
+                      <td className="w-20 border border-zinc-800 px-2 py-3">{m.firstMove ?? "—"}</td>
+                      <td className="w-40 border border-zinc-800 px-2 py-3"></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -1066,23 +1170,23 @@ function PairingTab({
 function MatchRow({
   match,
   manageable,
-  gameKey,
   userId,
   reload,
 }: {
   match: Match;
   manageable: boolean;
-  gameKey: string;
   userId: string;
   reload: () => void;
 }) {
   const [busy, setBusy] = useState(false);
-  const [kind, setKind] = useState<"win" | "draw" | "void">("win");
-  const [winner, setWinner] = useState<"A" | "B">("A");
-  const submit = async () => {
+  const submit = async (kind: "winA" | "winB" | "draw" | "void") => {
     setBusy(true);
     try {
-      const result = kind === "win" ? { kind: "win", winner } : kind === "draw" ? { kind: "draw" } : { kind: "void" };
+      const result =
+        kind === "winA" ? { kind: "win", winner: "A" }
+          : kind === "winB" ? { kind: "win", winner: "B" }
+            : kind === "draw" ? { kind: "draw" }
+              : { kind: "void" };
       const res = await fetch(`/api/otc/matches/${match.id}/result`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-user-id": userId },
@@ -1100,45 +1204,64 @@ function MatchRow({
   const finished = match.status === "finished";
   const resultText = finished && match.result
     ? match.result.kind === "win"
-      ? `${match.result.winner} 勝`
+      ? `${match.result.winner === "A" ? "A 方" : "B 方"}勝`
       : match.result.kind === "draw"
         ? "和局"
         : "作廢"
     : null;
+  const aWon = match.result?.kind === "win" && match.result.winner === "A";
+  const bWon = match.result?.kind === "win" && match.result.winner === "B";
   return (
-    <li className="flex flex-col gap-2 rounded-token-lg border border-border bg-surface p-3 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <p className="text-xs text-muted-fg">
-          第 {match.roundNo} 輪{match.tableNo != null && ` · 桌 ${match.tableNo}`}
-          {match.categoryKey && ` · ${match.categoryKey}`}
-        </p>
-        <p className="mt-1 font-medium text-foreground">{match.playerAId} vs {match.playerBId}</p>
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        {finished ? (
-          <StatusBadge domain="match" value={match.status} />
-        ) : (
-          <Badge tone="neutral">{statusMeta("match", match.status).label}</Badge>
-        )}
-        {resultText && <Badge tone={match.result?.kind === "void" ? "muted" : "info"}>{resultText}</Badge>}
-        {manageable && !finished && (
-          <>
-            <select value={kind} onChange={(e) => setKind(e.target.value as "win" | "draw" | "void")} aria-label="結果類型" className="min-h-[44px] rounded-token-md border border-border bg-surface px-2 text-foreground">
-              <option value="win">勝負</option>
-              <option value="draw">和局</option>
-              <option value="void">作廢</option>
-            </select>
-            {kind === "win" && (
-              <select value={winner} onChange={(e) => setWinner(e.target.value as "A" | "B")} aria-label="勝方" className="min-h-[44px] rounded-token-md border border-border bg-surface px-2 text-foreground">
-                <option value="A">A 勝</option>
-                <option value="B">B 勝</option>
-              </select>
-            )}
-            <Button size="sm" onClick={submit} loading={busy}>上傳</Button>
-          </>
-        )}
+    <li className="rounded-token-lg border border-border bg-surface p-3">
+      <div className="grid gap-3 lg:grid-cols-[96px_1fr_auto] lg:items-center">
+        <div className="flex items-center gap-2 lg:block">
+          <p className="text-xs text-muted-fg">桌次</p>
+          <p className="text-lg font-bold text-foreground">{match.tableNo ?? "—"}</p>
+          {match.categoryKey && <Badge tone="muted">{match.categoryKey}</Badge>}
+        </div>
+        <div className="grid gap-2 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
+          <PlayerCell label="A" playerId={match.playerAId} first={match.firstMove === "A"} won={aWon} />
+          <span className="text-center text-xs text-muted-fg">vs</span>
+          <PlayerCell label="B" playerId={match.playerBId} first={match.firstMove === "B"} won={bWon} />
+        </div>
+        <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+          {resultText ? <Badge tone={match.result?.kind === "void" ? "muted" : "info"}>{resultText}</Badge> : <Badge tone="warning">{statusMeta("match", match.status).label}</Badge>}
+          {manageable && (
+            <>
+              <Button size="sm" variant={aWon ? "primary" : "secondary"} onClick={() => submit("winA")} loading={busy} disabled={busy}>A勝</Button>
+              <Button size="sm" variant={bWon ? "primary" : "secondary"} onClick={() => submit("winB")} loading={busy} disabled={busy}>B勝</Button>
+              <Button size="sm" variant={match.result?.kind === "draw" ? "primary" : "secondary"} onClick={() => submit("draw")} disabled={busy}>和</Button>
+              <Button size="sm" variant="ghost" onClick={() => submit("void")} disabled={busy}>作廢</Button>
+            </>
+          )}
+        </div>
       </div>
     </li>
+  );
+}
+
+function PlayerCell({
+  label,
+  playerId,
+  first,
+  won,
+}: {
+  label: "A" | "B";
+  playerId: string;
+  first: boolean;
+  won: boolean;
+}) {
+  return (
+    <div className={cn(
+      "flex min-h-[48px] items-center justify-between gap-3 rounded-token-md border px-3",
+      won ? "border-[var(--tone-success-border)] bg-[var(--tone-success-bg)]" : "border-border bg-background"
+    )}>
+      <div className="min-w-0">
+        <p className="text-[11px] font-semibold text-muted-fg">{label} 方{first ? " · 先手" : ""}</p>
+        <p className="truncate font-medium text-foreground">{playerId}</p>
+      </div>
+      {won && <Badge tone="success">勝</Badge>}
+    </div>
   );
 }
 

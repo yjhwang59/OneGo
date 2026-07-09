@@ -6,9 +6,10 @@
  *  1. 棋手以匿名代碼當顯示名；user id 以 (組別+代碼) 命名空間化（處理跨組撞碼 P090/P146）。
  *  2. 新建主辦單位，擁有者 = yjhwang。
  *  3. 賽事名稱：2025 XYZ圍棋公開賽（1 個賽事 + 19 個組別 category）。
- *  4. 輪空(空)/棄權(棄) 不建立 match。
- *  5. 官方名次/輔分/升段/加賽/勝場 存入 tournament_official_results 表。
- *  6. 直接寫入本機 PostgreSQL（DATABASE_URL_LOCAL）。
+ *  4. 歷史賽事報名視為已報到，避免 standings 因無 checkins 而沒有參賽者。
+ *  5. 輪空(空)/棄權(棄) 不建立 match。
+ *  6. 官方名次/輔分/升段/加賽/勝場 存入 tournament_official_results 表。
+ *  7. 直接寫入本機 PostgreSQL（DATABASE_URL_LOCAL）。
  *
  * 冪等：若同主辦同名賽事已存在，先刪除該賽事（cascade 清掉其 categories/registrations/matches/official_results），再重建。
  * 棋手 user 以 upsert 方式建立（id 已對本賽事命名空間化，不影響其他賽事）。
@@ -32,6 +33,7 @@ const T_TIMEZONE = 'Asia/Taipei';
 const ROUND_COUNT = 6;
 const ID_NS = 'xyz2025';
 const CSV = 'docs/data/anonymized_group_results.csv';
+const SIMULATED_CHECKIN_AT = '2025-12-28T08:00:00+08:00';
 
 // ---- CSV 欄位索引 ----
 const C = {
@@ -178,6 +180,11 @@ async function main() {
         `insert into registrations (id, tournament_id, user_id, status, category_key)
          values ($1,$2,$3,'paid',$4)`,
         [regId, tournamentId, p.uid, p.group]
+      );
+      await client.query(
+        `insert into checkins (registration_id, status, checked_in_at)
+         values ($1, 'checked_in', $2::timestamptz)`,
+        [regId, SIMULATED_CHECKIN_AT]
       );
       await client.query(
         `insert into tournament_official_results

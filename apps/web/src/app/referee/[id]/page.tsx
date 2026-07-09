@@ -132,21 +132,21 @@ export default function RefereeTournamentPage({ params }: { params: Promise<{ id
 
   if (!isAuthenticated) {
     return (
-      <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
         <ErrorBanner tone="warning">請先登入（或模擬登入）以進行裁判計分。</ErrorBanner>
       </main>
     );
   }
   if (loading) {
     return (
-      <main className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-8 text-muted-fg sm:px-6">
+      <main className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-8 text-muted-fg sm:px-6">
         <Spinner /> 載入中…
       </main>
     );
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+    <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
       <Link href="/referee" className="inline-flex min-h-[44px] items-center text-sm text-muted-fg hover:text-foreground">
         ← 返回裁判賽事
       </Link>
@@ -233,9 +233,20 @@ export default function RefereeTournamentPage({ params }: { params: Promise<{ id
       )}
 
       {filteredMatches.length > 0 && (
-        <p className="mt-4 text-sm text-muted-fg">
-          共 {filteredMatches.length} 桌，尚有 <span className="font-semibold text-foreground">{pending}</span> 桌待輸入。
-        </p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-token-lg border border-border bg-surface px-4 py-3">
+            <p className="text-xs text-muted-fg">桌次</p>
+            <p className="text-xl font-bold text-foreground">{filteredMatches.length}</p>
+          </div>
+          <div className="rounded-token-lg border border-border bg-surface px-4 py-3">
+            <p className="text-xs text-muted-fg">待輸入</p>
+            <p className="text-xl font-bold text-foreground">{pending}</p>
+          </div>
+          <div className="rounded-token-lg border border-border bg-surface px-4 py-3">
+            <p className="text-xs text-muted-fg">已完成</p>
+            <p className="text-xl font-bold text-foreground">{filteredMatches.length - pending}</p>
+          </div>
+        </div>
       )}
 
       {filteredMatches.length === 0 ? (

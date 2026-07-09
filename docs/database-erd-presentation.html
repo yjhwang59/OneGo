@@ -1,0 +1,747 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OneGo 資料庫關聯圖與資料結構簡報</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --ink: #17212b;
+      --muted: #5a6675;
+      --line: #d7dde5;
+      --panel: #ffffff;
+      --green: #2f7d68;
+      --blue: #2e6f9e;
+      --red: #b65a4b;
+      --yellow: #b88421;
+      --shadow: 0 18px 55px rgba(25, 33, 43, 0.14);
+      --slide-w: min(100vw, calc(100vh * 16 / 9));
+      --slide-h: min(100vh, calc(100vw * 9 / 16));
+      --scale: min(1vw, 1.778vh);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #111820;
+      color: var(--ink);
+      font-family: "Segoe UI", "Noto Sans TC", "Microsoft JhengHei", Arial, sans-serif;
+    }
+
+    body {
+      display: grid;
+      place-items: center;
+    }
+
+    .deck {
+      position: relative;
+      width: var(--slide-w);
+      height: var(--slide-h);
+      background: var(--bg);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: none;
+      grid-template-rows: auto 1fr auto;
+      gap: calc(var(--scale) * 1.4);
+      padding: calc(var(--scale) * 5.2) calc(var(--scale) * 6.2) calc(var(--scale) * 4.5);
+      background:
+        linear-gradient(90deg, rgba(47, 125, 104, 0.08), transparent 42%),
+        linear-gradient(180deg, rgba(46, 111, 158, 0.08), transparent 30%),
+        var(--bg);
+    }
+
+    .slide.active {
+      display: grid;
+    }
+
+    .eyebrow {
+      color: var(--green);
+      font-size: clamp(15px, calc(var(--scale) * 1.35), 22px);
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    h1,
+    h2 {
+      margin: 0;
+      letter-spacing: 0;
+      line-height: 1.08;
+    }
+
+    h1 {
+      max-width: 11em;
+      font-size: clamp(44px, calc(var(--scale) * 5.5), 88px);
+    }
+
+    h2 {
+      font-size: clamp(36px, calc(var(--scale) * 4.2), 68px);
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: clamp(19px, calc(var(--scale) * 2), 31px);
+    }
+
+    .lead {
+      max-width: 36em;
+      font-size: clamp(22px, calc(var(--scale) * 2.25), 36px);
+    }
+
+    .content {
+      min-height: 0;
+      display: grid;
+      align-content: center;
+      gap: calc(var(--scale) * 2.2);
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: calc(var(--scale) * 2.6);
+      align-items: center;
+    }
+
+    .grid-2,
+    .grid-3,
+    .grid-4 {
+      display: grid;
+      gap: calc(var(--scale) * 1.35);
+    }
+
+    .grid-2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .grid-3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .grid-4 {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .card,
+    .entity,
+    .note {
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.88);
+      border-radius: 8px;
+    }
+
+    .card {
+      min-height: calc(var(--scale) * 12);
+      padding: calc(var(--scale) * 1.65);
+      display: grid;
+      gap: calc(var(--scale) * 0.8);
+      align-content: start;
+    }
+
+    .card strong {
+      font-size: clamp(20px, calc(var(--scale) * 2.1), 34px);
+      line-height: 1.18;
+    }
+
+    .card span {
+      color: var(--muted);
+      font-size: clamp(16px, calc(var(--scale) * 1.55), 25px);
+      line-height: 1.45;
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: calc(var(--scale) * 0.7);
+    }
+
+    .tag {
+      padding: calc(var(--scale) * 0.45) calc(var(--scale) * 0.8);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      color: var(--muted);
+      font-size: clamp(14px, calc(var(--scale) * 1.28), 20px);
+      white-space: nowrap;
+    }
+
+    .entity-map {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-auto-rows: minmax(calc(var(--scale) * 8.3), auto);
+      gap: calc(var(--scale) * 1);
+      align-items: stretch;
+    }
+
+    .entity {
+      padding: calc(var(--scale) * 1);
+      display: grid;
+      gap: calc(var(--scale) * 0.45);
+      align-content: start;
+      position: relative;
+    }
+
+    .entity::after {
+      content: "";
+      position: absolute;
+      right: calc(var(--scale) * -0.75);
+      top: 50%;
+      width: calc(var(--scale) * 0.75);
+      border-top: 2px solid #93a1af;
+    }
+
+    .entity:nth-child(4)::after,
+    .entity:nth-child(8)::after,
+    .entity:nth-child(12)::after {
+      display: none;
+    }
+
+    .entity h3 {
+      margin: 0;
+      color: var(--ink);
+      font-size: clamp(17px, calc(var(--scale) * 1.72), 27px);
+      line-height: 1.16;
+    }
+
+    .entity small {
+      color: var(--muted);
+      font-size: clamp(12px, calc(var(--scale) * 1.05), 17px);
+      line-height: 1.3;
+    }
+
+    .entity.core {
+      border-color: rgba(46, 111, 158, 0.45);
+    }
+
+    .entity.flow {
+      border-color: rgba(47, 125, 104, 0.45);
+    }
+
+    .entity.rating {
+      border-color: rgba(184, 132, 33, 0.5);
+    }
+
+    .table-list {
+      display: grid;
+      gap: calc(var(--scale) * 0.85);
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 0.8fr 1.2fr;
+      gap: calc(var(--scale) * 1);
+      padding: calc(var(--scale) * 0.8) calc(var(--scale) * 1);
+      border-left: 5px solid var(--blue);
+      background: rgba(255, 255, 255, 0.78);
+      border-radius: 6px;
+      align-items: center;
+    }
+
+    .row b {
+      font-size: clamp(17px, calc(var(--scale) * 1.75), 28px);
+    }
+
+    .row span {
+      color: var(--muted);
+      font-size: clamp(15px, calc(var(--scale) * 1.5), 24px);
+      line-height: 1.35;
+    }
+
+    .status-flow {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: calc(var(--scale) * 0.72);
+      align-items: center;
+    }
+
+    .status {
+      min-height: calc(var(--scale) * 7.2);
+      padding: calc(var(--scale) * 0.8);
+      display: grid;
+      place-items: center;
+      text-align: center;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      font-size: clamp(14px, calc(var(--scale) * 1.28), 21px);
+      font-weight: 700;
+      line-height: 1.24;
+      position: relative;
+    }
+
+    .status:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      right: calc(var(--scale) * -0.72);
+      top: 50%;
+      width: calc(var(--scale) * 0.7);
+      border-top: 2px solid #8fa0af;
+    }
+
+    .note {
+      padding: calc(var(--scale) * 1.35);
+      color: var(--muted);
+      font-size: clamp(16px, calc(var(--scale) * 1.55), 25px);
+      line-height: 1.45;
+    }
+
+    .priority {
+      display: grid;
+      grid-template-columns: 0.42fr 1.58fr;
+      gap: calc(var(--scale) * 1.1);
+      align-items: start;
+      padding: calc(var(--scale) * 1.2);
+      border-radius: 8px;
+      background: #fff;
+      border: 1px solid var(--line);
+    }
+
+    .priority b {
+      font-size: clamp(26px, calc(var(--scale) * 2.7), 42px);
+      color: var(--green);
+    }
+
+    .priority ul,
+    .tight-list {
+      margin: 0;
+      padding-left: 1.05em;
+      color: var(--muted);
+      font-size: clamp(16px, calc(var(--scale) * 1.62), 26px);
+      line-height: 1.42;
+    }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      color: var(--muted);
+      font-size: clamp(13px, calc(var(--scale) * 1.25), 20px);
+    }
+
+    .controls {
+      position: absolute;
+      left: 50%;
+      bottom: calc(var(--scale) * 1.6);
+      z-index: 20;
+      display: flex;
+      gap: calc(var(--scale) * 0.8);
+      transform: translateX(-50%);
+      align-items: center;
+      padding: calc(var(--scale) * 0.55);
+      border: 1px solid rgba(215, 221, 229, 0.85);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.92);
+      box-shadow: 0 10px 28px rgba(23, 33, 43, 0.14);
+    }
+
+    button {
+      min-width: calc(var(--scale) * 8);
+      min-height: calc(var(--scale) * 3.2);
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fff;
+      color: var(--ink);
+      font-size: clamp(14px, calc(var(--scale) * 1.35), 21px);
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      color: #a4adb8;
+      cursor: default;
+    }
+
+    .counter {
+      min-width: calc(var(--scale) * 5.2);
+      text-align: center;
+      color: var(--muted);
+      font-size: clamp(14px, calc(var(--scale) * 1.25), 20px);
+    }
+
+    .accent-blue {
+      color: var(--blue);
+    }
+
+    .accent-red {
+      color: var(--red);
+    }
+
+    .accent-yellow {
+      color: var(--yellow);
+    }
+
+    @media (max-aspect-ratio: 4 / 3) {
+      .slide {
+        padding: calc(var(--scale) * 4.5) calc(var(--scale) * 4.2) calc(var(--scale) * 4.2);
+      }
+
+      .two-col,
+      .grid-3,
+      .grid-4 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .entity-map {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .entity:nth-child(4)::after,
+      .entity:nth-child(8)::after {
+        display: block;
+      }
+
+      .entity:nth-child(3)::after,
+      .entity:nth-child(6)::after,
+      .entity:nth-child(9)::after,
+      .entity:nth-child(12)::after {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="deck" aria-live="polite">
+    <section class="slide active">
+      <div>
+        <div class="eyebrow">OneGo Database Brief</div>
+        <h1>資料庫關聯圖與資料結構</h1>
+      </div>
+      <div class="content">
+        <p class="lead">這份簡報把現有 PostgreSQL schema 轉成產品與工程都能快速理解的視角：資料怎麼分區、核心關聯是什麼、哪裡已被資料庫保護、下一步該優化什麼。</p>
+        <div class="tag-row">
+          <span class="tag">PostgreSQL</span>
+          <span class="tag">多主辦單位</span>
+          <span class="tag">賽事報名流程</span>
+          <span class="tag">ELO 等級分</span>
+        </div>
+      </div>
+      <div class="footer">
+        <span>來源：db/schema/otc.sql、db/schema/rating.sql</span>
+        <span>HTML 簡報</span>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div>
+        <div class="eyebrow">資料模型切分</div>
+        <h2>四個資料區塊</h2>
+      </div>
+      <div class="content grid-4">
+        <article class="card">
+          <strong>身份與權限</strong>
+          <span>使用者、平台總管、主辦單位成員、賽事裁判與工作人員。</span>
+          <span class="tag">users</span>
+        </article>
+        <article class="card">
+          <strong>賽事核心</strong>
+          <span>賽事本體、組別、輪次、桌次、雙方選手與結果。</span>
+          <span class="tag">tournaments</span>
+        </article>
+        <article class="card">
+          <strong>報名流程</strong>
+          <span>報名、付款、報到，以 registration 作為流程主軸。</span>
+          <span class="tag">registrations</span>
+        </article>
+        <article class="card">
+          <strong>等級分系統</strong>
+          <span>棋種設定、目前分數、歷史變化、計算任務。</span>
+          <span class="tag">ratings</span>
+        </article>
+      </div>
+      <div class="footer">
+        <span>核心方向：賽事流程與 rating 分開，降低耦合。</span>
+        <span></span>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div>
+        <div class="eyebrow">ERD Overview</div>
+        <h2>主要資料關聯</h2>
+      </div>
+      <div class="content">
+        <div class="entity-map">
+          <div class="entity flow"><h3>users</h3><small>帳號與平台角色</small></div>
+          <div class="entity flow"><h3>organization_memberships</h3><small>組織內 owner/admin/staff</small></div>
+          <div class="entity flow"><h3>organizations</h3><small>多租戶主辦邊界</small></div>
+          <div class="entity core"><h3>tournaments</h3><small>賽事本體與狀態</small></div>
+
+          <div class="entity core"><h3>tournament_roles</h3><small>賽事裁判與工作人員</small></div>
+          <div class="entity core"><h3>tournament_categories</h3><small>段位組、級位組等</small></div>
+          <div class="entity core"><h3>registrations</h3><small>使用者報名賽事</small></div>
+          <div class="entity flow"><h3>payments</h3><small>付款與 provider 參考</small></div>
+
+          <div class="entity flow"><h3>checkins</h3><small>報到狀態</small></div>
+          <div class="entity core"><h3>matches</h3><small>對局、結果、完成時間</small></div>
+          <div class="entity rating"><h3>player_ratings</h3><small>目前等級分彙總</small></div>
+          <div class="entity rating"><h3>rating_history</h3><small>每次 rating 變化</small></div>
+        </div>
+      </div>
+      <div class="footer">
+        <span>圖中線條表示主要閱讀順序；細部 FK 以文件版為準。</span>
+        <span></span>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div>
+        <div class="eyebrow">Core Tables</div>
+        <h2>核心資料表職責</h2>
+      </div>
+      <div class="content table-list">
+        <div class="row"><b>users</b><span>所有參賽者、主辦、裁判與平台管理者的帳號主檔。</span></div>
+        <div class="row"><b>organizations</b><span>主辦單位，也是目前多租戶資料邊界。</span></div>
+        <div class="row"><b>tournaments</b><span>賽事本體：棋種、賽制、輪次、時間、狀態。</span></div>
+        <div class="row"><b>registrations</b><span>使用者報名某場賽事，並可綁定組別。</span></div>
+        <div class="row"><b>matches</b><span>單場對局資料，結果以 JSONB 儲存，由 rules package 校驗語意。</span></div>
+      </div>
+      <div class="footer">
+        <span>設計重點：Tournament 與 Match 是核心，付款與報到不侵入核心責任。</span>
+        <span></span>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div>
+        <div class="eyebrow">Tournament Lifecycle</div>
+        <h2>賽事生命週期</h2>
+      </div>
+      <div class="content">
+        <div class="status-flow">
+          <div class="status">draft<br>草稿</div>
+          <div class="status">published<br>公開</div>
+          <div class="status">checkin_open<br>開放報到</div>
+          <div class="status">pairing_ready<br>可配對</div>
+          <div class="status">in_progress<br>進行中</div>
+          <div class="status">closed<br>結束</div>
+          <div class="status">cancelled<br>取消</div>
+        </div>
+        <div class="note">目前狀態本身使用 PostgreSQL enum，流程轉換規則主要由 API 與狀態機文件維護。賽事時間區間 `starts_at` / `ends_at` 可支援裁判指派衝突檢查。</div>
+      </div>
+      <div class="footer">
+        <span>狀態欄位：tournaments.status</span>
+        <span></span>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div>
+        <div class="eyebrow">Registration Flow</div>
+        <h2>報名、付款、報到</h2>
+      </div>
+      <div class="content two-col">
+        <div class="table-list">
+          <div class="row"><b>registrations</b><span>一位使用者在同一賽事只能有一筆報名。</span></div>
+          <div class="row"><b>payments</b><span>一筆報名可有多筆付款，支援重試與未來退款。</span></div>
+          <div class="row"><b>checkins</b><span>一筆報名最多一筆報到資料。</span></div>
+        </div>
+        <div class="note">
+          <b class="accent-blue">資料庫已保護</b><br>
+          `unique (tournament_id, user_id)` 防止重複報名；`checkins.registration_id unique` 防止重複報到列。<br><br>
+          <b class="accent-red">仍靠應用層</b><br>
+          報名是否超過組別名額、付款成功後才可報到等流程規則。
+        </div>
+      </div>
+      <div class="footer">
+        <span>流程主軸：registration -> payment/checkin</span>
+        <span></span>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div>
+        <div class="eyebrow">Rating System</div>
+        <h2>ELO 等級分模組</h2>
+      </div>
+      <div class="content grid-2">
+        <article class="card">
+          <strong>rating_configs</strong>
+          <span>每棋種一組設定，包含預設分、K 值、最低分與最高分。</span>
+        </article>
+        <article class="card">
+          <strong>player_ratings</strong>
+          <span>每位玩家、每個棋種一筆目前分數，支援排行榜查詢。</span>
+        </article>
+        <article class="card">
+          <strong>rating_history</strong>
+          <span>保留每次分數變化：賽事、對局、賽果、前後分數與 K 值。</span>
+        </article>
+        <article class="card">
+          <strong>rating_calculation_jobs</strong>
+          <span>追蹤某場賽事的計算任務，避免完成後被重複計算。</span>
+        </article>
+      </div>
+      <div class="footer">
+        <span>rating.sql 依賴 otc.sql 已建立的 users、tournaments、matches。</span>
+        <span></span>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div>
+        <div class="eyebrow">Data Integrity</div>
+        <h2>資料庫已經保護什麼？</h2>
+      </div>
+      <div class="content grid-3">
+        <article class="card"><strong>唯一性</strong><span>組織 slug、email、Google sub、組織成員、賽事報名、組別 key、玩家棋種 rating。</span></article>
+        <article class="card"><strong>父子關聯</strong><span>主辦到賽事、賽事到報名/對局、報名到付款/報到，多數已有 FK。</span></article>
+        <article class="card"><strong>安全刪除</strong><span>部分資料 cascade，rating history 對賽事與對局採 set null，保留歷史分數。</span></article>
+        <article class="card"><strong>基本檢查</strong><span>對局不可自己對自己，輪次必須大於 0。</span></article>
+        <article class="card"><strong>狀態 enum</strong><span>賽事、對局、報名、付款、報到、棋種已使用 enum。</span></article>
+        <article class="card"><strong>索引</strong><span>已有角色、組別、對局輪次、排行榜、rating history 查詢索引。</span></article>
+      </div>
+      <div class="footer">
+        <span>這些規則可降低髒資料進入核心流程的機率。</span>
+        <span></span>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div>
+        <div class="eyebrow">Risk Boundary</div>
+        <h2>目前仍靠應用層保護</h2>
+      </div>
+      <div class="content two-col">
+        <ul class="tight-list">
+          <li>組織角色、賽事角色、平台角色等 text 欄位合法值</li>
+          <li>`matches.player_a_id` / `player_b_id` 是否是有效參賽者</li>
+          <li>`category_key` 是否存在於該賽事組別</li>
+          <li>`matches.result` JSONB 是否符合棋種規則</li>
+          <li>裁判跨賽事指派是否時間重疊</li>
+          <li>組別 capacity 是否已滿</li>
+          <li>rating 完成後是否禁止重複入帳</li>
+        </ul>
+        <div class="note">
+          這些不是錯誤，而是 MVP 常見的取捨。下一階段可以先補低成本的資料庫防線，再處理參賽者模型這類會影響長期演進的核心決策。
+        </div>
+      </div>
+      <div class="footer">
+        <span>重點：區分「目前可接受」與「正式營運前應補強」。</span>
+        <span></span>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div>
+        <div class="eyebrow">Design Recommendations</div>
+        <h2>建議優先順序</h2>
+      </div>
+      <div class="content">
+        <div class="priority">
+          <b>P0</b>
+          <ul>
+            <li>為 text 狀態欄位加 CHECK constraint</li>
+            <li>限制 `matches.first_move` 只能是 A/B</li>
+            <li>finished match 必須有 result</li>
+            <li>為 completed rating job 加 partial unique index</li>
+            <li>補高頻查詢索引</li>
+          </ul>
+        </div>
+        <div class="priority">
+          <b>P1</b>
+          <ul>
+            <li>強化 `category_key` 與 tournament_categories 的關聯</li>
+            <li>明確 match player 來源：user、registration 或 participant</li>
+            <li>建立 participants 表，支援退賽、替補、隊伍賽</li>
+            <li>`updated_at` 改由 trigger 統一處理</li>
+          </ul>
+        </div>
+        <div class="priority">
+          <b>P2</b>
+          <ul>
+            <li>導入正式 migration 流程</li>
+            <li>新增 payment events / refunds</li>
+            <li>加入 audit log 與軟刪除</li>
+            <li>rating history 連到 calculation job</li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer">
+        <span>P0 先提高資料品質，P1 再處理模型演進。</span>
+        <span></span>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div>
+        <div class="eyebrow">Key Takeaway</div>
+        <h2>結論</h2>
+      </div>
+      <div class="content">
+        <p class="lead">目前模型方向清楚：以 `organizations -> tournaments -> registrations/matches` 為主軸，權限分成平台、組織、賽事三層，rating 系統獨立在賽後計算。</p>
+        <div class="grid-3">
+          <article class="card"><strong class="accent-blue">短期</strong><span>補 constraint 與索引，快速降低髒資料風險。</span></article>
+          <article class="card"><strong class="accent-yellow">中期</strong><span>建立 participants，讓配對、退賽、替補與成績更穩。</span></article>
+          <article class="card"><strong class="accent-red">長期</strong><span>導入 migration、audit log 與完整付款事件紀錄。</span></article>
+        </div>
+      </div>
+      <div class="footer">
+        <span>完整文字版：docs/17-database-erd-and-structure.md</span>
+        <span>End</span>
+      </div>
+    </section>
+
+    <nav class="controls" aria-label="簡報控制">
+      <button id="prev" type="button" aria-label="上一頁">上一頁</button>
+      <span id="counter" class="counter">1 / 11</span>
+      <button id="next" type="button" aria-label="下一頁">下一頁</button>
+    </nav>
+  </main>
+
+  <script>
+    const slides = Array.from(document.querySelectorAll(".slide"));
+    const prev = document.getElementById("prev");
+    const next = document.getElementById("next");
+    const counter = document.getElementById("counter");
+    let index = 0;
+
+    function render() {
+      slides.forEach((slide, i) => {
+        slide.classList.toggle("active", i === index);
+      });
+      prev.disabled = index === 0;
+      next.disabled = index === slides.length - 1;
+      counter.textContent = `${index + 1} / ${slides.length}`;
+      document.title = `(${index + 1}/${slides.length}) OneGo 資料庫簡報`;
+    }
+
+    function go(delta) {
+      index = Math.max(0, Math.min(slides.length - 1, index + delta));
+      render();
+    }
+
+    prev.addEventListener("click", () => go(-1));
+    next.addEventListener("click", () => go(1));
+    window.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowLeft" || event.key === "PageUp") go(-1);
+      if (event.key === "ArrowRight" || event.key === "PageDown" || event.key === " ") {
+        event.preventDefault();
+        go(1);
+      }
+      if (event.key === "Home") {
+        index = 0;
+        render();
+      }
+      if (event.key === "End") {
+        index = slides.length - 1;
+        render();
+      }
+    });
+
+    render();
+  </script>
+</body>
+</html>

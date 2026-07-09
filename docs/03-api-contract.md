@@ -77,10 +77,24 @@ Request（皆可選）：
 - `POST /api/tournaments/:id/events/cancel`
 
 ## 4. Registrations（報名）
-- `POST /api/tournaments/:tournamentId/registrations`
+- `POST /api/tournaments/:tournamentId/registrations`（body：`userId`、可選 `categoryKey`；**若賽事已定義組別則 `categoryKey` 必填**）
 - `GET /api/tournaments/:tournamentId/registrations`
 - `POST /api/registrations/:id/events/cancel`
+- `POST /api/registrations/:id/events/change-category`（body：`categoryKey`；僅 `published`／`checkin_open`）
 - `GET /api/me/registrations`：目前使用者的所有報名
+
+### 4.0 Tournament Categories（賽事組別）
+- `GET /api/tournaments/:tournamentId/categories`（主辦成員）
+- `GET /api/public/tournaments/:tournamentId/categories`（公開，已發布賽事）
+- `POST /api/tournaments/:tournamentId/categories`（body：`key`、`displayName`、`sortOrder?`、`capacity?`）
+- `PATCH /api/tournaments/:tournamentId/categories/:categoryId`
+- `DELETE /api/tournaments/:tournamentId/categories/:categoryId`（有報名則 `409 CATEGORY_HAS_REGISTRATIONS`）
+
+錯誤碼：`CATEGORY_REQUIRED`、`INVALID_CATEGORY_KEY`、`CATEGORY_FULL`、`CANNOT_CHANGE_CATEGORY`
+
+編排與排名：各 `categoryKey` **組內獨立**瑞士制配對與名次；桌次該輪跨組連號。
+
+公開排名 `GET /api/public/tournaments/:id/standings`：與管理端相同之分組 standings（含 `categoryKey`）；`?categoryKey=` 可篩單組。
 
 ### 4.1 個人戰績彙整（參賽者個人中心，P2）
 
@@ -105,6 +119,7 @@ Request（皆可選）：
 - `POST /api/registrations/:registrationId/checkin/events/withdraw`
 - `GET /api/tournaments/:tournamentId/checkins`：報到看板；回傳 `{ registrationId, status, checkedInAt? }[]`
   - 讀取權限 `hasOrgAccess`（org 成員含 staff 皆可讀）；供主辦作戰台顯示報到狀態與批次報到（P3）
+- 報到／退賽寫入權限：`hasOrgAccess`（org 成員含 **staff** 可操作，與改組一致）
 
 ## 7. Pairing（編排）
 > 已實作基礎瑞士制：依當前積分分組、同分組內配對、避免重複對局、奇數時 bye；必要時允許重賽以產出該輪。
@@ -119,6 +134,14 @@ Request（皆可選）：
 - `POST /api/matches/:id/result`
   - Request：`result`（由 rules 外掛定義的正規化結果）
   - 行為：校驗 result -> 更新 Match 狀態為 finished
+
+## 8.1 ELO 等級分（Phase 1；詳見 [docs/08](08-rating-system.md)）
+
+- `POST /api/tournaments/:id/calculate-ratings`（`hasTournamentManageAccess`）
+  - 依本賽事已完成對局逐場套 ELO 並更新棋手等級分；回 `{ matchesProcessed, playersAffected }`
+  - 冪等：同賽事已計算過回 `409 ALREADY_RATED`（MVP 不支援重算）；`void` 對局不計
+- `GET /api/ratings/:gameKey/leaderboard?limit=&offset=`（公開）：依 `current_rating` 遞減
+- `GET /api/players/:id/ratings/:gameKey`（公開）：`{ rating, history[] }`（單棋種當前分與變化紀錄）
 
 ## 9. Standings（排名）
 - `GET /api/tournaments/:tournamentId/standings`
@@ -146,6 +169,14 @@ Request（皆可選）：
   - Response：`{ userId: string, displayName: string, email?: string }`
   - 邏輯：先以 `google_sub` 查詢，無則以 `email` 查詢；存在則更新 display_name/avatar_url，不存在則 INSERT。
 
+- `PATCH /api/me`（本人自助更新）
+  - Request body（皆可選）：`{ displayName?: string, email?: string | null }`
+  - Response：與 `GET /api/me` 相同結構（含 `googleLinked` 等）
+  - `409 EMAIL_TAKEN`：Email 已被其他帳號使用
+  - 不可變更 `platformRole`、`status`
+
+- `GET /api/me` 擴充欄位：`email`、`avatarUrl`、`status`、`createdAt`、`googleLinked`（是否已綁定 Google，不洩漏 `google_sub`）
+
 ## 12. Platform（平台總管／系統總管理員）
 > 以下路徑僅 **platform_admin**（系統總管理員）可呼叫；權限由 `users.platform_role` 判定，與主辦內 owner/admin 無關。
 > 註：platform_admin 亦**穿透**所有主辦／賽事層級授權檢查，故可直接以總管身分呼叫既有的主辦與賽事管理端點（見 [docs/12](12-roles-and-permissions.md) 第 5 節）。
@@ -158,7 +189,9 @@ Request（皆可選）：
   - Response：`{ counts: { organizations, users, tournaments, inProgressTournaments }, recentUsers: [{ id, displayName, email, status, createdAt }] }`
 - `GET /api/platform/organizations`：全平台主辦單位列表
 - `GET /api/platform/organizations/:id`：單一主辦單位詳情
-- `GET /api/platform/users?limit=&offset=&q=`：全平台用戶列表（查詢參數：limit、offset、q 搜尋 id/displayName/email）
+- `GET /api/platform/users?limit=&offset=&q=`：全平台用戶列表（分頁）
+  - Response：`{ items: User[], total: number, limit: number, offset: number }`
+  - 每筆 User 含 `googleLinked`（是否已綁定 Google）、`avatarUrl` 等；不洩漏 `google_sub`
 - `POST /api/platform/users`：建立用戶
   - Body：`{ id: string, displayName?: string, email?: string | null, platformRole?: 'platform_admin' | null }`
   - `409 ALREADY_EXISTS`（id 重複）、`409 EMAIL_TAKEN`（email 已被使用）

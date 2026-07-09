@@ -118,6 +118,12 @@ export default function ResultsPage() {
                     查看名次榜 →
                   </span>
                 </Link>
+                <Link
+                  href={`/tournaments/${t.id}/results`}
+                  className="mt-2 inline-block text-sm font-medium text-brand-subtle-fg hover:underline"
+                >
+                  各組戰績 →
+                </Link>
               </li>
             );
           })}

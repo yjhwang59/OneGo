@@ -82,5 +82,8 @@ node scripts/seed-tournament-flow.mjs
 
 ## 4. 後台棋友管理（平台總管）
 
-- **平台總管**（`users.platform_role = 'platform_admin'`）可於後台「全平台用戶」檢視、搜尋所有棋友（users）。
-- **單一用戶詳情**：可編輯顯示名稱、Email、平台角色（一般／平台總管），並以 `PATCH /api/platform/users/:id` 儲存。
+- **平台總管**（`users.platform_role = 'platform_admin'`）可於後台「全平台用戶」檢視、搜尋、分頁瀏覽所有棋友。
+- **建立用戶**：列表頁「新增用戶」。
+- **單一用戶詳情**：可編輯顯示名稱、Email、平台角色，停權／解除停權、刪除（有關聯時不可刪）；顯示 Google 綁定狀態與頭像。
+- **棋友自助**：個人中心「帳號設定」(`/me/settings`) 可更新顯示名稱與 Email（`PATCH /api/me`）。
+- API 契約見 `docs/03-api-contract.md` §11、§12；E2E 見 `npm run e2e:users`。

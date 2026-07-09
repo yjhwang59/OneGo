@@ -20,15 +20,29 @@ type User = {
   email?: string;
   platformRole?: string | null;
   status?: string;
+  avatarUrl?: string | null;
+  googleLinked?: boolean;
   createdAt: string;
 };
+
+type UserListResponse = {
+  items: User[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+const PAGE_SIZE = 20;
 
 export default function PlatformUsersPage() {
   const { userId, isAuthenticated, platformRole } = useUser();
   const [list, setList] = useState<User[]>([]);
+  const [total, setTotal] = useState(0);
+  const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState("");
+  const [searchQ, setSearchQ] = useState("");
 
   const [showCreate, setShowCreate] = useState(false);
   const [newId, setNewId] = useState("");
@@ -42,20 +56,33 @@ export default function PlatformUsersPage() {
     if (!userId) return;
     try {
       const params = new URLSearchParams();
-      if (q.trim()) params.set("q", q.trim());
+      params.set("limit", String(PAGE_SIZE));
+      params.set("offset", String(offset));
+      if (searchQ.trim()) params.set("q", searchQ.trim());
       const res = await fetch(`/api/otc/platform/users?${params.toString()}`, { headers: { "x-user-id": userId } });
       const text = await res.text();
       const data = text ? (() => { try { return JSON.parse(text); } catch { return null; } })() : null;
-      if (!res.ok) { setError(data?.message ?? data?.code ?? "無法載入（僅平台總管可存取）"); setList([]); return; }
-      setList(Array.isArray(data) ? data : []);
+      if (!res.ok) { setError(data?.message ?? data?.code ?? "無法載入（僅平台總管可存取）"); setList([]); setTotal(0); return; }
+      const page = data as UserListResponse;
+      if (page && Array.isArray(page.items)) {
+        setList(page.items);
+        setTotal(page.total ?? page.items.length);
+      } else if (Array.isArray(data)) {
+        setList(data);
+        setTotal(data.length);
+      } else {
+        setList([]);
+        setTotal(0);
+      }
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "網路錯誤");
       setList([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
-  }, [userId, q]);
+  }, [userId, offset, searchQ]);
 
   useEffect(() => {
     if (isAuthenticated && userId) load();
@@ -128,10 +155,17 @@ export default function PlatformUsersPage() {
         </Card>
       )}
 
-      <form className="mt-4 flex items-center gap-2" onSubmit={(e) => { e.preventDefault(); setLoading(true); load(); }}>
+      <form className="mt-4 flex items-center gap-2" onSubmit={(e) => { e.preventDefault(); setOffset(0); setSearchQ(q); setLoading(true); }}>
         <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="搜尋 ID、名稱、Email" className={`flex-1 ${inputCls}`} />
         <Button type="submit" variant="secondary">搜尋</Button>
       </form>
+
+      {!loading && !error && total > 0 && (
+        <p className="mt-3 text-sm text-muted-fg">
+          共 {total} 位用戶
+          {total > PAGE_SIZE && ` · 第 ${offset + 1}–${Math.min(offset + PAGE_SIZE, total)} 筆`}
+        </p>
+      )}
 
       {loading ? (
         <div className="mt-6 flex items-center gap-3 text-muted-fg"><Spinner /> 載入中…</div>
@@ -152,6 +186,7 @@ export default function PlatformUsersPage() {
                   <span className="ml-2 text-sm text-muted-fg">{u.id}</span>
                 </div>
                 <div className="flex items-center gap-2">
+                  {u.googleLinked && <Badge tone="info">Google</Badge>}
                   {u.status === "suspended" && <Badge tone="danger">已停權</Badge>}
                   {u.platformRole === "platform_admin" && <Badge tone="purple">平台總管</Badge>}
                 </div>
@@ -159,6 +194,28 @@ export default function PlatformUsersPage() {
             </li>
           ))}
         </ul>
+      )}
+
+      {!loading && !error && total > PAGE_SIZE && (
+        <div className="mt-6 flex items-center justify-between gap-2">
+          <Button
+            variant="secondary"
+            disabled={offset === 0}
+            onClick={() => { setOffset((o) => Math.max(0, o - PAGE_SIZE)); setLoading(true); }}
+          >
+            上一頁
+          </Button>
+          <span className="text-sm text-muted-fg">
+            {Math.floor(offset / PAGE_SIZE) + 1} / {Math.ceil(total / PAGE_SIZE)}
+          </span>
+          <Button
+            variant="secondary"
+            disabled={offset + PAGE_SIZE >= total}
+            onClick={() => { setOffset((o) => o + PAGE_SIZE); setLoading(true); }}
+          >
+            下一頁
+          </Button>
+        </div>
       )}
     </div>
   );

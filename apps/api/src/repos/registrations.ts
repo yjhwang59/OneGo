@@ -94,3 +94,16 @@ export async function findRegistrationByTournamentAndUser(
   if (r.rows.length === 0) return null;
   return rowToRegistration(r.rows[0]);
 }
+
+export async function updateRegistrationCategoryKey(
+  pool: Pool,
+  id: string,
+  categoryKey: string
+): Promise<Registration | null> {
+  const now = new Date().toISOString();
+  await pool.query(
+    'UPDATE registrations SET category_key = $1, updated_at = $2::timestamptz WHERE id = $3',
+    [categoryKey, now, id]
+  );
+  return getRegistration(pool, id);
+}

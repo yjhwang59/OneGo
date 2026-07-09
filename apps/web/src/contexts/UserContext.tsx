@@ -26,6 +26,8 @@ type UserContextValue = {
   /** 來自 Google 登入時為 true；僅 模擬登入 時為 false */
   fromSession: boolean;
   displayName: string | null;
+  /** 重新從 API 載入個人資料（例如帳號設定儲存後） */
+  refreshProfile: () => void;
 };
 
 const UserContext = createContext<UserContextValue | null>(null);
@@ -41,6 +43,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [platformRole, setPlatformRole] = useState<string | null>(null);
   const [orgRoles, setOrgRoles] = useState<string[]>([]);
   const [isReferee, setIsReferee] = useState(false);
+  const [apiDisplayName, setApiDisplayName] = useState<string | null>(null);
+  const [profileTick, setProfileTick] = useState(0);
+
+  const refreshProfile = useCallback(() => setProfileTick((n) => n + 1), []);
 
   useEffect(() => {
     setStoredId(getStored());
@@ -54,6 +60,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       setPlatformRole(null);
       setOrgRoles([]);
       setIsReferee(false);
+      setApiDisplayName(null);
       return;
     }
     let cancelled = false;
@@ -62,13 +69,19 @@ export function UserProvider({ children }: { children: ReactNode }) {
       .then(
         (
           data:
-            | { platformRole?: string | null; orgRoles?: string[]; isReferee?: boolean }
+            | {
+                platformRole?: string | null;
+                orgRoles?: string[];
+                isReferee?: boolean;
+                displayName?: string;
+              }
             | null
         ) => {
           if (cancelled || !data) return;
           setPlatformRole(data.platformRole ?? null);
           setOrgRoles(Array.isArray(data.orgRoles) ? data.orgRoles : []);
           setIsReferee(!!data.isReferee);
+          if (data.displayName) setApiDisplayName(data.displayName);
         }
       )
       .catch(() => {
@@ -76,11 +89,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
         setPlatformRole(null);
         setOrgRoles([]);
         setIsReferee(false);
+        setApiDisplayName(null);
       });
     return () => {
       cancelled = true;
     };
-  }, [userId]);
+  }, [userId, profileTick]);
 
   const setUserId = useCallback((id: string | null) => {
     if (id === null) {
@@ -91,7 +105,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
     setStoredId(id);
   }, []);
 
-  const displayName = fromSession ? (session?.user?.name ?? null) : null;
+  const displayName = fromSession
+    ? (session?.user?.name ?? apiDisplayName)
+    : (apiDisplayName ?? userId);
 
   const value = useMemo(
     () => ({
@@ -102,9 +118,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
       orgRoles,
       isReferee,
       fromSession: !!fromSession,
-      displayName,
+      displayName: displayName ?? null,
+      refreshProfile,
     }),
-    [userId, setUserId, platformRole, orgRoles, isReferee, fromSession, displayName]
+    [userId, setUserId, platformRole, orgRoles, isReferee, fromSession, displayName, refreshProfile]
   );
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;

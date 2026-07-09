@@ -12,6 +12,8 @@ type User = {
   email?: string;
   platformRole?: string | null;
   status?: string;
+  avatarUrl?: string | null;
+  googleLinked?: boolean;
   createdAt: string;
 };
 
@@ -176,9 +178,19 @@ export default function PlatformUserDetailPage() {
   return (
     <div>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-3xl">
-          {user.displayName}
-        </h1>
+        <div className="flex items-center gap-4">
+          {user.avatarUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={user.avatarUrl}
+              alt=""
+              className="h-14 w-14 rounded-full border border-zinc-200 object-cover dark:border-zinc-700"
+            />
+          )}
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-3xl">
+            {user.displayName}
+          </h1>
+        </div>
         {!editing ? (
           <div className="flex gap-2">
             <button
@@ -298,6 +310,10 @@ export default function PlatformUserDetailPage() {
               <dd>{user.platformRole}</dd>
             </div>
           )}
+          <div>
+            <dt className="text-zinc-500 dark:text-zinc-400">Google 登入</dt>
+            <dd>{user.googleLinked ? "已綁定" : "未綁定"}</dd>
+          </div>
           <div>
             <dt className="text-zinc-500 dark:text-zinc-400">帳號狀態</dt>
             <dd>

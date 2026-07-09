@@ -30,7 +30,7 @@ type Match = {
   result?: { kind: string; winner?: string } | null;
 };
 type Tournament = { id: string; name: string; gameKey: string; status: string };
-type StandingsRow = { playerId: string; points: number; wins: number; draws: number; losses: number };
+type StandingsRow = { playerId: string; points: number; wins: number; draws: number; losses: number; categoryKey?: string | null };
 
 const DEFAULT_GROUP = "未分組";
 
@@ -44,6 +44,7 @@ export default function RefereeTournamentPage({ params }: { params: Promise<{ id
   const [error, setError] = useState<string | null>(null);
   const [busyMatch, setBusyMatch] = useState<string | null>(null);
   const [showStandings, setShowStandings] = useState(false);
+  const [filterGroup, setFilterGroup] = useState<string>("all");
 
   const load = useCallback(async () => {
     if (!userId || !id) return;
@@ -102,10 +103,20 @@ export default function RefereeTournamentPage({ params }: { params: Promise<{ id
     [userId, canScore, busyMatch, load]
   );
 
+  const groupOptions = useMemo(() => {
+    const keys = new Set(matches.map((m) => m.categoryKey?.trim() || DEFAULT_GROUP));
+    return [...keys].sort();
+  }, [matches]);
+
+  const filteredMatches = useMemo(() => {
+    if (filterGroup === "all") return matches;
+    return matches.filter((m) => (m.categoryKey?.trim() || DEFAULT_GROUP) === filterGroup);
+  }, [matches, filterGroup]);
+
   // 逐輪逐桌：依 round → table 排序，分組顯示
   const rounds = useMemo(() => {
     const map = new Map<number, Match[]>();
-    for (const m of matches) {
+    for (const m of filteredMatches) {
       if (!map.has(m.roundNo)) map.set(m.roundNo, []);
       map.get(m.roundNo)!.push(m);
     }
@@ -115,9 +126,9 @@ export default function RefereeTournamentPage({ params }: { params: Promise<{ id
         roundNo,
         list: list.sort((x, y) => (x.tableNo ?? 0) - (y.tableNo ?? 0)),
       }));
-  }, [matches]);
+  }, [filteredMatches]);
 
-  const pending = matches.filter((m) => m.status !== "finished").length;
+  const pending = filteredMatches.filter((m) => m.status !== "finished").length;
 
   if (!isAuthenticated) {
     return (
@@ -170,6 +181,22 @@ export default function RefereeTournamentPage({ params }: { params: Promise<{ id
         </div>
       )}
 
+      {matches.length > 0 && groupOptions.length > 1 && (
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <span className="text-sm text-muted-fg">篩選組別</span>
+          <select
+            value={filterGroup}
+            onChange={(e) => setFilterGroup(e.target.value)}
+            className="min-h-[44px] rounded-token-md border border-border bg-surface px-3 text-sm text-foreground"
+          >
+            <option value="all">全部組別</option>
+            {groupOptions.map((g) => (
+              <option key={g} value={g}>{g === DEFAULT_GROUP ? "未分組" : g}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {showStandings && (
         <Card className="mt-4">
           <CardBody>
@@ -177,26 +204,41 @@ export default function RefereeTournamentPage({ params }: { params: Promise<{ id
             {standings.length === 0 ? (
               <p className="mt-2 text-sm text-muted-fg">尚無排名（需有已結束對局）。</p>
             ) : (
-              <ol className="mt-3 space-y-1">
-                {standings.map((s, i) => (
-                  <li key={s.playerId} className="flex items-center justify-between text-sm">
-                    <span className="text-foreground"><span className="text-muted-fg">{i + 1}.</span> {s.playerId}</span>
-                    <span className="text-muted-fg">{s.wins}/{s.draws}/{s.losses} · <span className="font-semibold text-foreground">{s.points}</span></span>
-                  </li>
-                ))}
-              </ol>
+              <div className="mt-3 space-y-4">
+                {(() => {
+                  const map = new Map<string, StandingsRow[]>();
+                  for (const s of standings) {
+                    const g = s.categoryKey?.trim() || DEFAULT_GROUP;
+                    if (!map.has(g)) map.set(g, []);
+                    map.get(g)!.push(s);
+                  }
+                  return [...map.entries()].map(([g, rows]) => (
+                    <div key={g}>
+                      {map.size > 1 && <p className="text-xs font-medium text-muted-fg">分組：{g === DEFAULT_GROUP ? "未分組" : g}</p>}
+                      <ol className="mt-1 space-y-1">
+                        {rows.map((s, i) => (
+                          <li key={s.playerId} className="flex items-center justify-between text-sm">
+                            <span className="text-foreground"><span className="text-muted-fg">{i + 1}.</span> {s.playerId}</span>
+                            <span className="text-muted-fg">{s.wins}/{s.draws}/{s.losses} · <span className="font-semibold text-foreground">{s.points}</span></span>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  ));
+                })()}
+              </div>
             )}
           </CardBody>
         </Card>
       )}
 
-      {matches.length > 0 && (
+      {filteredMatches.length > 0 && (
         <p className="mt-4 text-sm text-muted-fg">
-          共 {matches.length} 桌，尚有 <span className="font-semibold text-foreground">{pending}</span> 桌待輸入。
+          共 {filteredMatches.length} 桌，尚有 <span className="font-semibold text-foreground">{pending}</span> 桌待輸入。
         </p>
       )}
 
-      {matches.length === 0 ? (
+      {filteredMatches.length === 0 ? (
         <div className="mt-6">
           <EmptyState title="此賽事尚無對局。" description="請先由主辦編排配對。" />
         </div>

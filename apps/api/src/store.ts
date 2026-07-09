@@ -52,6 +52,19 @@ export type TournamentRole = {
   createdAt: string;
 };
 
+/** 賽事組別定義（段位組、級位組等） */
+export type TournamentCategory = {
+  id: Id;
+  tournamentId: Id;
+  /** 穩定鍵，用於 registration.categoryKey / match.categoryKey */
+  key: string;
+  displayName: string;
+  sortOrder: number;
+  capacity?: number | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type RegistrationStatus = 'created' | 'awaiting_payment' | 'paid' | 'cancelled' | 'refunded';
 
 export type Registration = {
@@ -124,16 +137,65 @@ export type User = {
   createdAt: string;
 };
 
+export type { GameKey } from '@otc/rules';
+
+export type PlayerRatingRow = {
+  playerId: Id;
+  gameKey: GameKey;
+  currentRating: number;
+  peakRating: number;
+  lowestRating: number;
+  gamesPlayed: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  lastCalculatedAt?: string;
+};
+
+export type RatingHistoryRow = {
+  id: Id;
+  playerId: Id;
+  gameKey: GameKey;
+  matchId?: Id | null;
+  tournamentId?: Id | null;
+  ratingBefore: number;
+  ratingAfter: number;
+  ratingChange: number;
+  kFactorUsed: number;
+  opponentRating?: number | null;
+  matchResult?: 'win' | 'draw' | 'loss' | null;
+  calculatedAt: string;
+};
+
+export type RatingJobStatus = 'pending' | 'processing' | 'completed' | 'failed';
+export type RatingJob = {
+  id: Id;
+  tournamentId: Id;
+  gameKey: GameKey;
+  status: RatingJobStatus;
+  matchesProcessed: number;
+  playersAffected: number;
+  triggeredBy?: Id | null;
+  errorMessage?: string | null;
+  createdAt: string;
+  completedAt?: string | null;
+};
+
 export class InMemoryStore {
   users = new Map<Id, User>();
   organizations = new Map<Id, Organization>();
   orgMemberships = new Map<Id, OrganizationMembership>();
   tournaments = new Map<Id, Tournament>();
+  tournamentCategories = new Map<Id, TournamentCategory>();
   tournamentRoles = new Map<Id, TournamentRole>();
   registrations = new Map<Id, Registration>();
   payments = new Map<Id, Payment>();
   checkins = new Map<Id, CheckIn>();
   matches = new Map<Id, Match>();
+  /** rating: key = `${playerId}:${gameKey}` */
+  playerRatings = new Map<string, PlayerRatingRow>();
+  ratingHistory = new Map<Id, RatingHistoryRow>();
+  ratingJobs = new Map<Id, RatingJob>();
 
   nowIso() {
     return new Date().toISOString();

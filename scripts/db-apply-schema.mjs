@@ -16,25 +16,26 @@ if (!databaseUrl) {
   process.exit(1);
 }
 
-const schemaPath = path.resolve(process.cwd(), 'db/schema/otc.sql');
-if (!fs.existsSync(schemaPath)) {
-  console.error(`找不到 schema 檔案：${schemaPath}`);
-  process.exit(1);
-}
-
-const sql = fs.readFileSync(schemaPath, 'utf8');
-if (!sql.trim()) {
-  console.error('schema 檔案是空的，無法套用。');
-  process.exit(1);
-}
+// 依序套用（後者可依賴前者建立的 type/table）
+const schemaFiles = ['db/schema/otc.sql', 'db/schema/rating.sql', 'db/schema/official-results.sql'];
 
 const client = new Client({ connectionString: databaseUrl });
 
 try {
   console.log('Connecting to DB...');
   await client.connect();
-  console.log('Applying schema (db/schema/otc.sql)...');
-  await client.query(sql);
+  for (const rel of schemaFiles) {
+    const p = path.resolve(process.cwd(), rel);
+    if (!fs.existsSync(p)) {
+      if (rel.endsWith('otc.sql')) { console.error(`找不到 schema 檔案：${p}`); process.exit(1); }
+      console.log(`（略過不存在的 ${rel}）`);
+      continue;
+    }
+    const sql = fs.readFileSync(p, 'utf8');
+    if (!sql.trim()) { console.log(`（略過空檔 ${rel}）`); continue; }
+    console.log(`Applying schema (${rel})...`);
+    await client.query(sql);
+  }
   console.log('Done.');
 } catch (err) {
   console.error('套用 schema 失敗：');

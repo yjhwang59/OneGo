@@ -12,3 +12,15 @@ export async function GET(request: Request) {
   }
   return proxyToOtc("/api/me", { method: "GET", userId });
 }
+
+export async function PATCH(request: Request) {
+  const userId = await getUserIdFromRequest(request);
+  if (!userId) {
+    return new Response(
+      JSON.stringify({ ok: false, code: "UNAUTHENTICATED", message: "請先登入" }),
+      { status: 401, headers: { "Content-Type": "application/json" } }
+    );
+  }
+  const body = await request.json().catch(() => ({}));
+  return proxyToOtc("/api/me", { method: "PATCH", body, userId });
+}

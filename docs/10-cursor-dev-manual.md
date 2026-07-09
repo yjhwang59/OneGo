@@ -137,6 +137,9 @@ docs/03-api-contract.md     # API 契約
 - 單元測試：`packages/core/src/*.test.ts`、`packages/rules/src/**/*.test.ts`
 - MVP 流程腳本：`scripts/mvp-flow.ps1`（需 API 已啟動）
 - **完整比賽流程 E2E**：`npm run e2e:full-tournament`（需 API 已啟動）；腳本 `scripts/e2e-full-tournament.mjs`，說明見 `docs/13-e2e-full-tournament-flow.md`
+- **用戶管理 E2E**：`npm run e2e:users`（API 需 `OTC_ALLOW_DEV_BOOTSTRAP=1`）；腳本 `scripts/e2e-user-management.mjs`
+- **角色／Use Case／擬真測試資料**：`docs/15-roles-usecases-and-test-data.md`；種子 `npm run seed:realistic`
+- **測試與驗收**：`docs/16-test-and-acceptance.md`；`npm run e2e:categories`、`npm run e2e:rbac-matrix`
 - DB schema 套用：`node scripts/db-apply-schema.mjs`（需 DATABASE_URL）
 
 ---

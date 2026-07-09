@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { Pool } from 'pg';
 import type { User } from '../store';
 
-const USER_COLS = 'id, email, display_name, platform_role, status, avatar_url, created_at';
+const USER_COLS = 'id, email, display_name, platform_role, status, avatar_url, google_sub, created_at';
 
 function rowToUser(r: Record<string, unknown>): User {
   return {
@@ -12,6 +12,7 @@ function rowToUser(r: Record<string, unknown>): User {
     platformRole: (r.platform_role as string) === 'platform_admin' ? 'platform_admin' : undefined,
     status: (r.status as string) === 'suspended' ? 'suspended' : 'active',
     avatarUrl: (r.avatar_url as string) ?? undefined,
+    googleSub: (r.google_sub as string) ?? undefined,
     createdAt: (r.created_at as Date)?.toISOString?.() ?? new Date().toISOString()
   };
 }
@@ -144,21 +145,32 @@ export async function updateUser(
 export async function listUsers(
   pool: Pool,
   opts: { limit?: number; offset?: number; q?: string } = {}
-): Promise<User[]> {
+): Promise<{ items: User[]; total: number }> {
   const { limit = 50, offset = 0, q } = opts;
-  let sql = `SELECT ${USER_COLS} FROM users`;
+  let where = '';
   const values: unknown[] = [];
   let idx = 1;
   if (q && q.trim()) {
-    sql += ` WHERE id ILIKE $${idx} OR display_name ILIKE $${idx} OR email ILIKE $${idx}`;
+    where = ` WHERE id ILIKE $${idx} OR display_name ILIKE $${idx} OR email ILIKE $${idx}`;
     values.push(`%${q.trim()}%`);
     idx++;
   }
-  sql += ' ORDER BY created_at DESC';
+  const countR = await pool.query(`SELECT COUNT(*)::int AS total FROM users${where}`, values);
+  const total = (countR.rows[0]?.total as number) ?? 0;
+  let sql = `SELECT ${USER_COLS} FROM users${where} ORDER BY created_at DESC`;
   sql += ` LIMIT $${idx} OFFSET $${idx + 1}`;
   values.push(limit, offset);
   const r = await pool.query(sql, values);
-  return r.rows.map((row) => rowToUser(row));
+  return { items: r.rows.map((row) => rowToUser(row)), total };
+}
+
+export async function isEmailTaken(pool: Pool, email: string, excludeUserId?: string): Promise<boolean> {
+  const trimmed = email.trim().toLowerCase();
+  if (!trimmed) return false;
+  const r = excludeUserId
+    ? await pool.query('SELECT 1 FROM users WHERE lower(email) = $1 AND id <> $2 LIMIT 1', [trimmed, excludeUserId])
+    : await pool.query('SELECT 1 FROM users WHERE lower(email) = $1 LIMIT 1', [trimmed]);
+  return r.rows.length > 0;
 }
 
 export async function createUser(

@@ -47,10 +47,12 @@ export default function TournamentDetailPage({
   const [error, setError] = useState<string | null>(null);
   const [registering, setRegistering] = useState(false);
   const [registerError, setRegisterError] = useState<string | null>(null);
-  const [standings, setStandings] = useState<Array<{ playerId: string; points: number }>>([]);
+  const [standings, setStandings] = useState<Array<{ playerId: string; points: number; categoryKey?: string | null; played?: number; wins?: number }>>([]);
   const [standingsLoading, setStandingsLoading] = useState(false);
   const [registrations, setRegistrations] = useState<Array<{ userId: string; categoryKey: string | null }>>([]);
   const [registrationsLoading, setRegistrationsLoading] = useState(false);
+  const [categories, setCategories] = useState<Array<{ key: string; displayName: string; capacity?: number | null }>>([]);
+  const [selectedCategory, setSelectedCategory] = useState("");
   const { userId, isAuthenticated } = useUser();
   const router = useRouter();
 
@@ -126,15 +128,40 @@ export default function TournamentDetailPage({
     return () => { cancelled = true; };
   }, [id]);
 
+  useEffect(() => {
+    let cancelled = false;
+    if (!id) return;
+    fetch(`/api/otc/public/tournaments/${id}/categories`, { cache: "no-store" })
+      .then(async (res) => {
+        const data = await res.json().catch(() => []);
+        return { ok: res.ok, data };
+      })
+      .then(({ ok, data }) => {
+        if (cancelled) return;
+        if (ok && Array.isArray(data)) {
+          setCategories(data);
+          if (data.length > 0) setSelectedCategory(data[0].key);
+        }
+      });
+    return () => { cancelled = true; };
+  }, [id]);
+
   const onRegister = useCallback(async () => {
     if (!id || !userId) return;
+    if (categories.length > 0 && !selectedCategory) {
+      setRegisterError("請選擇組別");
+      return;
+    }
     setRegisterError(null);
     setRegistering(true);
     try {
       const res = await fetch(`/api/otc/tournaments/${id}/registrations`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-user-id": userId },
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify({
+          userId,
+          ...(categories.length > 0 ? { categoryKey: selectedCategory } : {}),
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -147,7 +174,7 @@ export default function TournamentDetailPage({
     } finally {
       setRegistering(false);
     }
-  }, [id, userId, router]);
+  }, [id, userId, router, categories, selectedCategory]);
 
   if (loading) {
     return (
@@ -242,6 +269,22 @@ export default function TournamentDetailPage({
             </p>
           ) : (
             <div>
+              {categories.length > 0 && (
+                <label className="mb-3 block text-sm">
+                  <span className="font-medium text-zinc-700 dark:text-zinc-300">選擇組別</span>
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="mt-1 min-h-[44px] w-full max-w-xs rounded-lg border border-zinc-300 bg-white px-3 text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100"
+                  >
+                    {categories.map((c) => (
+                      <option key={c.key} value={c.key}>
+                        {c.displayName}{c.capacity != null ? `（上限 ${c.capacity} 人）` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
               <button
                 type="button"
                 onClick={onRegister}
@@ -272,8 +315,9 @@ export default function TournamentDetailPage({
                 const map = new Map<string, string[]>();
                 for (const r of registrations) {
                   const key = (r.categoryKey?.trim() || "未分組");
-                  if (!map.has(key)) map.set(key, []);
-                  map.get(key)!.push(r.userId);
+                  const label = categories.find((c) => c.key === r.categoryKey)?.displayName ?? key;
+                  if (!map.has(label)) map.set(label, []);
+                  map.get(label)!.push(r.userId);
                 }
                 const keys = Array.from(map.keys()).sort((a, b) => {
                   if (a === "未分組") return -1;
@@ -317,27 +361,42 @@ export default function TournamentDetailPage({
           ) : standings.length === 0 ? (
             <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">尚無排名資料（需有已結束的對局）。</p>
           ) : (
-            <div className="mt-3 overflow-x-auto">
-              <table className="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">
-                <thead>
-                  <tr>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">名次</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">選手</th>
-                    <th className="px-3 py-2 text-right text-xs font-medium text-zinc-500 dark:text-zinc-400">積分</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-                  {[...standings]
-                    .sort((a, b) => b.points - a.points)
-                    .map((row, i) => (
-                      <tr key={row.playerId}>
-                        <td className="px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100">{i + 1}</td>
-                        <td className="px-3 py-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">{maskName(row.playerId)}</td>
-                        <td className="px-3 py-2 text-right text-sm text-zinc-900 dark:text-zinc-100">{row.points}</td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
+            <div className="mt-3 space-y-8">
+              {(() => {
+                const labelOf = (k: string | null | undefined) =>
+                  categories.find((c) => c.key === k)?.displayName ?? (k?.trim() || "未分組");
+                const map = new Map<string, typeof standings>();
+                for (const row of standings) {
+                  const g = labelOf(row.categoryKey);
+                  if (!map.has(g)) map.set(g, []);
+                  map.get(g)!.push(row);
+                }
+                return [...map.entries()].map(([groupLabel, rows]) => (
+                  <div key={groupLabel}>
+                    <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">分組：{groupLabel}</h3>
+                    <div className="mt-2 overflow-x-auto">
+                      <table className="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">
+                        <thead>
+                          <tr>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">名次</th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">選手</th>
+                            <th className="px-3 py-2 text-right text-xs font-medium text-zinc-500 dark:text-zinc-400">積分</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+                          {rows.map((row, i) => (
+                            <tr key={row.playerId}>
+                              <td className="px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100">{i + 1}</td>
+                              <td className="px-3 py-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">{maskName(row.playerId)}</td>
+                              <td className="px-3 py-2 text-right text-sm text-zinc-900 dark:text-zinc-100">{row.points}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ));
+              })()}
             </div>
           )}
         </section>

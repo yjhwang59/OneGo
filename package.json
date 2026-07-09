@@ -29,11 +29,18 @@
     "db:apply": "node --env-file=.env scripts/db-apply-schema.mjs",
     "db:smoke": "node --env-file=.env scripts/db-smoke.mjs",
     "seed:tournament": "node scripts/seed-tournament-flow.mjs",
+    "seed:realistic": "node --env-file=.env scripts/seed-realistic-scenarios.mjs",
+    "e2e:categories": "node scripts/e2e-categories.mjs",
+    "e2e:rbac-matrix": "node scripts/e2e-rbac-matrix.mjs",
     "grant:admin": "node --env-file=.env scripts/grant-platform-admin.mjs",
     "rbac:seed": "node --env-file=.env scripts/seed-rbac.mjs",
     "test:accounts": "node --env-file=.env scripts/seed-test-accounts.mjs",
     "e2e:full-tournament": "node scripts/e2e-full-tournament.mjs",
-    "start": "powershell -ExecutionPolicy Bypass -File scripts/start.ps1"
+    "e2e:users": "node scripts/e2e-user-management.mjs",
+    "start": "powershell -ExecutionPolicy Bypass -File scripts/start.ps1",
+    "version:patch": "node scripts/bump-version.mjs patch",
+    "version:minor": "node scripts/bump-version.mjs minor",
+    "version:major": "node scripts/bump-version.mjs major"
   }
 }
 

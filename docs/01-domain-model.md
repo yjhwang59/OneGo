@@ -34,8 +34,9 @@
 - **Organization**：主辦單位（多租戶邊界，一個主辦可有多個賽事）；可經 PATCH 更新 name/slug
 - **OrganizationMembership**：使用者在**該主辦單位內**的角色（Owner/主辦管理員 Admin/Staff），與系統管理員無關；可移除成員（不可移除最後一位 owner）
 - **PlayerProfile**：棋力履歷（可選，MVP 可先用基本資料）
-- **TournamentRole**：使用者在賽事的角色（Organizer/Staff）
-- **Registration**：報名（user/player -> tournament/category）
+- **TournamentCategory**：賽事組別定義（`key`、`displayName`、`sortOrder`、可選 `capacity`）；報名與對局以 `categoryKey` 引用
+- **TournamentRole**：使用者在賽事的角色（Organizer/Staff/Referee）
+- **Registration**：報名（user -> tournament + categoryKey）
 - **Payment**：付款（registration -> payment，透過 provider 抽象）
 - **CheckIn**：報到狀態（registration -> checkin）
 - **Participant**：賽事內參賽者視圖（可由 registration + checkin 彙整而來）
@@ -43,6 +44,7 @@
 ## 4. 主要關聯（概念圖文字版）
 - Organization 1..N Tournament
 - Organization 1..N OrganizationMembership（User 取得組織層級角色）
+- Tournament 1..N TournamentCategory（組別定義）
 - Tournament 1..N Match
 - Tournament 1..N Registration
 - Tournament 1..N TournamentRole（賽事層級指派：可把裁判只指派到特定賽事）

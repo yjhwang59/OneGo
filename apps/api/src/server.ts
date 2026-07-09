@@ -8,19 +8,107 @@ dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 import Fastify from 'fastify';
 import { Type } from '@sinclair/typebox';
 
-import { canCheckIn, canGeneratePairing, canRegister, canSubmitResult, canTransitionTournament, computePublicPoints, computeStandings, getTiebreakOrderForGame, intervalsOverlap } from '@otc/core';
+import { canCheckIn, canGeneratePairing, canRegister, canSubmitResult, canTransitionTournament, computeStandings, getTiebreakOrderForGame, intervalsOverlap } from '@otc/core';
 import { basicSwissPairing, decideFirstMove, roundRobinSchedule } from '@otc/pairing';
-import { dbHealth } from './db';
-import { getData, type EnsureFromGoogleParams } from './data';
+import { calculateEloChange, calculateKFactor, clampRating, DEFAULT_RATING_CONFIG } from '@otc/rating';
+import { dbHealth, getPool } from './db';
+import { getData, type DataSource, type EnsureFromGoogleParams } from './data';
 import { getCaller, hasOrgAccess, hasOrgManageAccess, hasResultInputAccess, hasTournamentManageAccess, isPlatformAdmin } from './rbac';
 import { getRulesPlugin } from './rules';
-import type { Match, Payment, Registration, Tournament } from './store';
+import type { GameKey, Match, Payment, RatingHistoryRow, Registration, Tournament, User } from './store';
 
 const app = Fastify({ logger: true });
 
 /** 分組賽事：空字串/未設定的 categoryKey 歸為同一預設組（undefined） */
 function normalizeGroupKey(v?: string | null): string | undefined {
   return v != null && v.trim() !== '' ? v : undefined;
+}
+
+const CATEGORY_KEY_PATTERN = /^[a-z0-9][a-z0-9_-]{0,31}$/;
+
+/** 驗證報名組別：有定義組別時必填且須存在；無定義時相容舊行為（單一預設組） */
+async function validateRegistrationCategory(
+  data: DataSource,
+  tournamentId: string,
+  categoryKey?: string | null,
+  excludeRegistrationId?: string
+): Promise<{ ok: true; key?: string } | { ok: false; code: string; message: string }> {
+  const categories = await data.tournamentCategories.listByTournamentId(tournamentId);
+  if (categories.length === 0) {
+    return { ok: true, key: normalizeGroupKey(categoryKey) };
+  }
+  const trimmed = categoryKey?.trim();
+  if (!trimmed) {
+    return { ok: false, code: 'CATEGORY_REQUIRED', message: '請選擇組別' };
+  }
+  const cat = categories.find((c) => c.key === trimmed);
+  if (!cat) {
+    return { ok: false, code: 'INVALID_CATEGORY_KEY', message: '組別不存在' };
+  }
+  if (cat.capacity != null) {
+    const regs = await data.registrations.listByTournamentId(tournamentId);
+    const count = regs.filter(
+      (r) => r.status !== 'cancelled' && r.categoryKey === cat.key && r.id !== excludeRegistrationId
+    ).length;
+    if (count >= cat.capacity) {
+      return { ok: false, code: 'CATEGORY_FULL', message: '該組別已滿' };
+    }
+  }
+  return { ok: true, key: cat.key };
+}
+
+/** 依已報到者與對局計算分組排名（管理端與公開端共用） */
+async function buildGroupedStandings(
+  data: DataSource,
+  t: Tournament,
+  filterCategoryKey?: string | null
+): Promise<Array<Record<string, unknown>>> {
+  const rules = getRulesPlugin({ gameKey: t.gameKey, rulesetVersion: t.rulesetVersion });
+  if (!rules) return [];
+
+  const regs = await data.registrations.listByTournamentId(t.id);
+  const validRegs = regs.filter((r) => r.status !== 'cancelled');
+  const regIds = validRegs.map((r) => r.id);
+  const checkedInIds = await data.checkins.listCheckedInRegistrationIds(regIds);
+  const checkedInRegs = validRegs.filter((r) => checkedInIds.has(r.id));
+  const matchList = await data.matches.listByTournamentId(t.id);
+
+  const hasFilter = filterCategoryKey != null;
+  const filterGroup = normalizeGroupKey(filterCategoryKey);
+  const groups = new Map<string | undefined, string[]>();
+  for (const r of checkedInRegs) {
+    const g = normalizeGroupKey(r.categoryKey);
+    if (hasFilter && g !== filterGroup) continue;
+    if (!groups.has(g)) groups.set(g, []);
+    groups.get(g)!.push(r.userId);
+  }
+
+  const out: Array<Record<string, unknown>> = [];
+  for (const [g, participants] of groups) {
+    const matches = matchList
+      .filter((m) => m.status === 'finished' && m.result && normalizeGroupKey(m.categoryKey) === g)
+      .map((m) => ({ playerAId: m.playerAId, playerBId: m.playerBId, result: m.result! }));
+    const rows = computeStandings({
+      participants,
+      matches,
+      rules,
+      tiebreakOrder: getTiebreakOrderForGame(t.gameKey)
+    });
+    for (const row of rows) out.push({ ...row, categoryKey: g ?? null });
+  }
+  return out;
+}
+
+/** API 回傳用戶物件（不洩漏 google_sub；管理端可附 googleLinked） */
+function serializeUser(u: User, opts?: { admin?: boolean }) {
+  const { googleSub, ...rest } = u;
+  return {
+    ...rest,
+    platformRole: u.platformRole ?? null,
+    status: u.status ?? 'active',
+    avatarUrl: u.avatarUrl ?? null,
+    ...(opts?.admin ? { googleLinked: !!googleSub } : {}),
+  };
 }
 
 app.get('/', async () => ({
@@ -296,17 +384,16 @@ app.get('/api/platform/stats', async (req, reply) => {
   const caller = await requirePlatformAdmin(req, reply);
   if (!caller) return;
   const data = getData();
-  const [orgs, tournaments, recentUsers] = await Promise.all([
+  const [orgs, tournaments, recentResult] = await Promise.all([
     data.organizations.listAll(),
     data.tournaments.list({}),
-    data.users.list({ limit: 8 }), // list() 已依 createdAt 遞減排序
+    data.users.list({ limit: 8 }),
   ]);
-  // 用戶總數：以大 limit 取回全部後計數（MVP 規模足夠）
-  const allUsers = await data.users.list({ limit: 100000 });
+  const { items: recentUsers, total: userCount } = recentResult;
   return {
     counts: {
       organizations: orgs.length,
-      users: allUsers.length,
+      users: userCount,
       tournaments: tournaments.length,
       inProgressTournaments: tournaments.filter((t) => t.status === 'in_progress').length,
     },
@@ -337,7 +424,13 @@ app.get('/api/platform/users', async (req, reply) => {
   const data = getData();
   const limit = q.limit != null ? Math.min(100, Math.max(1, parseInt(q.limit, 10) || 50)) : 50;
   const offset = q.offset != null ? Math.max(0, parseInt(q.offset, 10) || 0) : 0;
-  return data.users.list({ limit, offset, q: q.q });
+  const { items, total } = await data.users.list({ limit, offset, q: q.q });
+  return {
+    items: items.map((u) => serializeUser(u, { admin: true })),
+    total,
+    limit,
+    offset,
+  };
 });
 
 app.get('/api/platform/users/:id', async (req, reply) => {
@@ -347,7 +440,7 @@ app.get('/api/platform/users/:id', async (req, reply) => {
   const data = getData();
   const user = await data.users.get(id);
   if (!user) return reply.code(404).send({ code: 'NOT_FOUND' });
-  return user;
+  return serializeUser(user, { admin: true });
 });
 
 // 建立用戶（平台總管；用於後台手動建帳號）
@@ -372,6 +465,10 @@ app.post(
     const data = getData();
     const existing = await data.users.get(id);
     if (existing) return reply.code(409).send({ code: 'ALREADY_EXISTS', message: '此使用者 ID 已存在' });
+    if (body.email != null && body.email.trim()) {
+      const taken = await data.users.isEmailTaken(body.email);
+      if (taken) return reply.code(409).send({ code: 'EMAIL_TAKEN', message: 'Email 已被其他帳號使用' });
+    }
     try {
       const created = await data.users.create({
         id,
@@ -379,7 +476,7 @@ app.post(
         email: body.email ?? null,
         platformRole: body.platformRole ?? null
       });
-      return reply.code(201).send(created);
+      return reply.code(201).send(serializeUser(created, { admin: true }));
     } catch (e: any) {
       // Postgres unique_violation（多半為 email 已被使用）
       if (e?.code === '23505') return reply.code(409).send({ code: 'EMAIL_TAKEN', message: 'Email 已被其他帳號使用' });
@@ -417,8 +514,18 @@ app.patch(
     const data = getData();
     const existing = await data.users.get(id);
     if (!existing) return reply.code(404).send({ code: 'NOT_FOUND' });
-    const updated = await data.users.update(id, body);
-    return updated;
+    if (body.email != null && body.email.trim()) {
+      const taken = await data.users.isEmailTaken(body.email, id);
+      if (taken) return reply.code(409).send({ code: 'EMAIL_TAKEN', message: 'Email 已被其他帳號使用' });
+    }
+    try {
+      const updated = await data.users.update(id, body);
+      if (!updated) return reply.code(404).send({ code: 'NOT_FOUND' });
+      return serializeUser(updated, { admin: true });
+    } catch (e: any) {
+      if (e?.code === '23505') return reply.code(409).send({ code: 'EMAIL_TAKEN', message: 'Email 已被其他帳號使用' });
+      throw e;
+    }
   }
 );
 
@@ -612,6 +719,128 @@ app.post('/api/tournaments/:id/events/cancel', async (req, reply) =>
   transitionTournament((req.params as any).id, 'cancelled', req, reply)
 );
 
+// ===== Tournament Categories（賽事組別）=====
+app.get('/api/tournaments/:tournamentId/categories', async (req, reply) => {
+  const caller = await requireCaller(req, reply);
+  if (!caller) return;
+  const tournamentId = (req.params as any).tournamentId as string;
+  const data = getData();
+  const t = await data.tournaments.get(tournamentId);
+  if (!t) return reply.code(404).send({ code: 'NOT_FOUND' });
+  if (!(await hasOrgAccess(data, caller, t.organizationId))) return reply.code(403).send({ code: 'FORBIDDEN' });
+  return data.tournamentCategories.listByTournamentId(tournamentId);
+});
+
+app.get('/api/public/tournaments/:tournamentId/categories', async (req, reply) => {
+  const tournamentId = (req.params as any).tournamentId as string;
+  const data = getData();
+  const t = await data.tournaments.get(tournamentId);
+  if (!t) return reply.code(404).send({ code: 'NOT_FOUND' });
+  const allowedStatuses = ['published', 'checkin_open', 'pairing_ready', 'in_progress', 'closed'];
+  if (!allowedStatuses.includes(t.status)) return reply.code(404).send({ code: 'NOT_FOUND' });
+  return data.tournamentCategories.listByTournamentId(tournamentId);
+});
+
+app.post(
+  '/api/tournaments/:tournamentId/categories',
+  {
+    schema: {
+      body: Type.Object({
+        key: Type.String({ minLength: 1 }),
+        displayName: Type.String({ minLength: 1 }),
+        sortOrder: Type.Optional(Type.Number()),
+        capacity: Type.Optional(Type.Union([Type.Number({ minimum: 1 }), Type.Null()]))
+      })
+    }
+  },
+  async (req, reply) => {
+    const caller = await requireCaller(req, reply);
+    if (!caller) return;
+    const tournamentId = (req.params as any).tournamentId as string;
+    const data = getData();
+    const t = await data.tournaments.get(tournamentId);
+    if (!t) return reply.code(404).send({ code: 'NOT_FOUND' });
+    if (!(await hasTournamentManageAccess(data, caller, t.id))) return reply.code(403).send({ code: 'FORBIDDEN' });
+    if (t.status === 'closed' || t.status === 'cancelled') {
+      return reply.code(409).send({ code: 'CANNOT_EDIT_CATEGORIES', message: '賽事已結束或取消，無法變更組別' });
+    }
+    const body = req.body as { key: string; displayName: string; sortOrder?: number; capacity?: number | null };
+    const key = body.key.trim().toLowerCase();
+    if (!CATEGORY_KEY_PATTERN.test(key)) {
+      return reply.code(400).send({ code: 'INVALID_CATEGORY_KEY', message: '組別 key 僅允許小寫英數、底線、連字號' });
+    }
+    const existing = await data.tournamentCategories.listByTournamentId(tournamentId);
+    if (existing.some((c) => c.key === key)) {
+      return reply.code(409).send({ code: 'DUPLICATE_CATEGORY_KEY' });
+    }
+    const cat = await data.tournamentCategories.create({
+      tournamentId,
+      key,
+      displayName: body.displayName.trim(),
+      sortOrder: body.sortOrder,
+      capacity: body.capacity
+    });
+    return reply.code(201).send(cat);
+  }
+);
+
+app.patch(
+  '/api/tournaments/:tournamentId/categories/:categoryId',
+  {
+    schema: {
+      body: Type.Object({
+        displayName: Type.Optional(Type.String({ minLength: 1 })),
+        sortOrder: Type.Optional(Type.Number()),
+        capacity: Type.Optional(Type.Union([Type.Number({ minimum: 1 }), Type.Null()]))
+      })
+    }
+  },
+  async (req, reply) => {
+    const caller = await requireCaller(req, reply);
+    if (!caller) return;
+    const tournamentId = (req.params as any).tournamentId as string;
+    const categoryId = (req.params as any).categoryId as string;
+    const data = getData();
+    const t = await data.tournaments.get(tournamentId);
+    if (!t) return reply.code(404).send({ code: 'NOT_FOUND' });
+    if (!(await hasTournamentManageAccess(data, caller, t.id))) return reply.code(403).send({ code: 'FORBIDDEN' });
+    if (t.status === 'closed' || t.status === 'cancelled') {
+      return reply.code(409).send({ code: 'CANNOT_EDIT_CATEGORIES', message: '賽事已結束或取消，無法變更組別' });
+    }
+    const existing = await data.tournamentCategories.get(categoryId);
+    if (!existing || existing.tournamentId !== tournamentId) return reply.code(404).send({ code: 'NOT_FOUND' });
+    const body = req.body as { displayName?: string; sortOrder?: number; capacity?: number | null };
+    const updated = await data.tournamentCategories.update(categoryId, {
+      displayName: body.displayName?.trim(),
+      sortOrder: body.sortOrder,
+      capacity: body.capacity
+    });
+    return updated;
+  }
+);
+
+app.delete('/api/tournaments/:tournamentId/categories/:categoryId', async (req, reply) => {
+  const caller = await requireCaller(req, reply);
+  if (!caller) return;
+  const tournamentId = (req.params as any).tournamentId as string;
+  const categoryId = (req.params as any).categoryId as string;
+  const data = getData();
+  const t = await data.tournaments.get(tournamentId);
+  if (!t) return reply.code(404).send({ code: 'NOT_FOUND' });
+  if (!(await hasTournamentManageAccess(data, caller, t.id))) return reply.code(403).send({ code: 'FORBIDDEN' });
+  if (t.status === 'closed' || t.status === 'cancelled') {
+    return reply.code(409).send({ code: 'CANNOT_EDIT_CATEGORIES', message: '賽事已結束或取消，無法變更組別' });
+  }
+  const existing = await data.tournamentCategories.get(categoryId);
+  if (!existing || existing.tournamentId !== tournamentId) return reply.code(404).send({ code: 'NOT_FOUND' });
+  const count = await data.tournamentCategories.countRegistrations(tournamentId, existing.key);
+  if (count > 0) {
+    return reply.code(409).send({ code: 'CATEGORY_HAS_REGISTRATIONS', message: '已有報名者，無法刪除組別' });
+  }
+  await data.tournamentCategories.delete(categoryId);
+  return reply.code(204).send();
+});
+
 // ===== Registrations =====
 app.post(
   '/api/tournaments/:tournamentId/registrations',
@@ -632,10 +861,12 @@ app.post(
     await data.ensureUser(body.userId);
     const existing = await data.registrations.find(tournamentId, body.userId);
     if (existing) return reply.code(409).send({ code: 'ALREADY_REGISTERED' });
+    const catCheck = await validateRegistrationCategory(data, tournamentId, body.categoryKey);
+    if (!catCheck.ok) return reply.code(400).send({ code: catCheck.code, message: catCheck.message });
     const r = await data.registrations.create({
       tournamentId,
       userId: body.userId,
-      categoryKey: body.categoryKey
+      categoryKey: catCheck.key
     });
     return reply.code(201).send(r);
   }
@@ -679,11 +910,66 @@ app.get('/api/me', async (req, reply) => {
   return {
     userId: caller.userId,
     displayName: user?.displayName,
+    email: user?.email ?? null,
+    avatarUrl: user?.avatarUrl ?? null,
+    status: user?.status ?? 'active',
+    createdAt: user?.createdAt,
+    googleLinked: !!user?.googleSub,
     platformRole: user?.platformRole ?? null,
     orgRoles,
     isReferee,
   };
 });
+
+app.patch(
+  '/api/me',
+  {
+    schema: {
+      body: Type.Object({
+        displayName: Type.Optional(Type.String({ minLength: 1 })),
+        email: Type.Optional(Type.Union([Type.String(), Type.Null()]))
+      })
+    }
+  },
+  async (req, reply) => {
+    const caller = await requireCaller(req, reply);
+    if (!caller) return;
+    const body = req.body as { displayName?: string; email?: string | null };
+    const data = getData();
+    const existing = await data.users.get(caller.userId);
+    if (!existing) return reply.code(404).send({ code: 'NOT_FOUND' });
+    if (body.email != null && body.email.trim()) {
+      const taken = await data.users.isEmailTaken(body.email, caller.userId);
+      if (taken) return reply.code(409).send({ code: 'EMAIL_TAKEN', message: 'Email 已被其他帳號使用' });
+    }
+    try {
+      const updated = await data.users.update(caller.userId, {
+        displayName: body.displayName,
+        email: body.email,
+      });
+      if (!updated) return reply.code(404).send({ code: 'NOT_FOUND' });
+      const memberships = await data.orgMemberships.listByUserId(caller.userId);
+      const orgRoles = [...new Set(memberships.map((m) => m.role))];
+      const tRoles = await data.tournamentRoles.listByUserId(caller.userId);
+      const isReferee = tRoles.some((r) => r.role === 'referee');
+      return {
+        userId: caller.userId,
+        displayName: updated.displayName,
+        email: updated.email ?? null,
+        avatarUrl: updated.avatarUrl ?? null,
+        status: updated.status ?? 'active',
+        createdAt: updated.createdAt,
+        googleLinked: !!updated.googleSub,
+        platformRole: updated.platformRole ?? null,
+        orgRoles,
+        isReferee,
+      };
+    } catch (e: any) {
+      if (e?.code === '23505') return reply.code(409).send({ code: 'EMAIL_TAKEN', message: 'Email 已被其他帳號使用' });
+      throw e;
+    }
+  }
+);
 
 app.get('/api/me/registrations', async (req, reply) => {
   const caller = await requireCaller(req, reply);
@@ -814,6 +1100,32 @@ app.post('/api/registrations/:id/events/cancel', async (req, reply) => {
   return updated;
 });
 
+app.post(
+  '/api/registrations/:id/events/change-category',
+  { schema: { body: Type.Object({ categoryKey: Type.String({ minLength: 1 }) }) } },
+  async (req, reply) => {
+    const caller = await requireCaller(req, reply);
+    if (!caller) return;
+    const id = (req.params as any).id as string;
+    const data = getData();
+    const r = await data.registrations.get(id);
+    if (!r) return reply.code(404).send({ code: 'NOT_FOUND' });
+    const t = await data.tournaments.get(r.tournamentId);
+    if (!t) return reply.code(404).send({ code: 'NOT_FOUND' });
+    if (t.status !== 'published' && t.status !== 'checkin_open') {
+      return reply.code(409).send({ code: 'CANNOT_CHANGE_CATEGORY', message: '僅報名或報到階段可變更組別' });
+    }
+    const isSelf = caller.userId === r.userId;
+    const isOrg = await hasOrgAccess(data, caller, t.organizationId);
+    if (!isSelf && !isOrg) return reply.code(403).send({ code: 'FORBIDDEN' });
+    const body = req.body as { categoryKey: string };
+    const catCheck = await validateRegistrationCategory(data, t.id, body.categoryKey, r.id);
+    if (!catCheck.ok) return reply.code(400).send({ code: catCheck.code, message: catCheck.message });
+    const updated = await data.registrations.updateCategoryKey(id, catCheck.key!);
+    return updated;
+  }
+);
+
 // ===== Payments (Mock) =====
 app.post(
   '/api/registrations/:registrationId/payments',
@@ -882,7 +1194,7 @@ app.post('/api/registrations/:registrationId/checkin/events/check-in', async (re
   if (!r) return reply.code(404).send({ code: 'NOT_FOUND' });
   const t = await data.tournaments.get(r.tournamentId);
   if (!t) return reply.code(404).send({ code: 'NOT_FOUND' });
-  if (!(await hasTournamentManageAccess(data, caller, t.id))) return reply.code(403).send({ code: 'FORBIDDEN' });
+  if (!(await hasOrgAccess(data, caller, t.organizationId))) return reply.code(403).send({ code: 'FORBIDDEN' });
   const guard = canCheckIn(t.status as any);
   if (!guard.ok) return reply.code(409).send({ code: guard.code, message: guard.message });
   const now = data.nowIso();
@@ -898,7 +1210,7 @@ app.post('/api/registrations/:registrationId/checkin/events/withdraw', async (re
   if (!r) return reply.code(404).send({ code: 'NOT_FOUND' });
   const t = await data.tournaments.get(r.tournamentId);
   if (!t) return reply.code(404).send({ code: 'NOT_FOUND' });
-  if (!(await hasTournamentManageAccess(data, caller, t.id))) return reply.code(403).send({ code: 'FORBIDDEN' });
+  if (!(await hasOrgAccess(data, caller, t.organizationId))) return reply.code(403).send({ code: 'FORBIDDEN' });
   const guard = canCheckIn(t.status as any);
   if (!guard.ok) return reply.code(409).send({ code: guard.code, message: guard.message });
   return data.checkins.upsert({ registrationId, status: 'withdrawn' });
@@ -1100,40 +1412,10 @@ app.get('/api/tournaments/:tournamentId/standings', async (req, reply) => {
   const t = await data.tournaments.get(tournamentId);
   if (!t) return reply.code(404).send({ code: 'NOT_FOUND' });
   if (!(await hasOrgAccess(data, caller, t.organizationId))) return reply.code(403).send({ code: 'FORBIDDEN' });
-  const rules = getRulesPlugin({ gameKey: t.gameKey, rulesetVersion: t.rulesetVersion });
-  if (!rules) return reply.code(400).send({ code: 'UNSUPPORTED_RULESET' });
-
-  const regs = await data.registrations.listByTournamentId(tournamentId);
-  const validRegs = regs.filter((r) => r.status !== 'cancelled');
-  const regIds = validRegs.map((r) => r.id);
-  const checkedInIds = await data.checkins.listCheckedInRegistrationIds(regIds);
-  const checkedInRegs = validRegs.filter((r) => checkedInIds.has(r.id));
-  const matchList = await data.matches.listByTournamentId(tournamentId);
-
-  // 分組賽事：依 categoryKey 各組獨立計名次；?categoryKey= 可只取單組（空字串代表預設組）
   const rawFilter = (req.query as any)?.categoryKey;
-  const hasFilter = rawFilter != null;
-  const filterGroup = normalizeGroupKey(rawFilter);
-  const groups = new Map<string | undefined, string[]>();
-  for (const r of checkedInRegs) {
-    const g = normalizeGroupKey(r.categoryKey);
-    if (hasFilter && g !== filterGroup) continue;
-    if (!groups.has(g)) groups.set(g, []);
-    groups.get(g)!.push(r.userId);
-  }
-
-  const out: Array<Record<string, unknown>> = [];
-  for (const [g, participants] of groups) {
-    const matches = matchList
-      .filter((m) => m.status === 'finished' && m.result && normalizeGroupKey(m.categoryKey) === g)
-      .map((m) => ({ playerAId: m.playerAId, playerBId: m.playerBId, result: m.result! }));
-    const rows = computeStandings({
-      participants,
-      matches,
-      rules,
-      tiebreakOrder: getTiebreakOrderForGame(t.gameKey)
-    });
-    for (const row of rows) out.push({ ...row, categoryKey: g ?? null });
+  const out = await buildGroupedStandings(data, t, rawFilter);
+  if (out.length === 0 && !getRulesPlugin({ gameKey: t.gameKey, rulesetVersion: t.rulesetVersion })) {
+    return reply.code(400).send({ code: 'UNSUPPORTED_RULESET' });
   }
   return out;
 });
@@ -1145,19 +1427,137 @@ app.get('/api/public/tournaments/:tournamentId/standings', async (req, reply) =>
   if (!t) return reply.code(404).send({ code: 'NOT_FOUND' });
   const rules = getRulesPlugin({ gameKey: t.gameKey, rulesetVersion: t.rulesetVersion });
   if (!rules) return reply.code(400).send({ code: 'UNSUPPORTED_RULESET' });
-  const matchList = await data.matches.listByTournamentId(tournamentId);
   const rawFilter = (req.query as any)?.categoryKey;
-  const hasFilter = rawFilter != null;
-  const filterGroup = normalizeGroupKey(rawFilter);
-  const matches = matchList
-    .filter(
-      (m) =>
-        m.status === 'finished' &&
-        m.result &&
-        (!hasFilter || normalizeGroupKey(m.categoryKey) === filterGroup)
-    )
-    .map((m) => ({ playerAId: m.playerAId, playerBId: m.playerBId, result: m.result! }));
-  return computePublicPoints({ matches, rules });
+  return buildGroupedStandings(data, t, rawFilter);
+});
+
+// ===== ELO 等級分（Phase 1）=====
+
+/** 對單一賽事逐場套用 ELO；經 DataSource 持久化。呼叫端需先確認冪等（無 completed job）。 */
+async function computeTournamentRatings(data: DataSource, t: Tournament, triggeredBy: string) {
+  const gameKey = t.gameKey as GameKey;
+  const config = { ...DEFAULT_RATING_CONFIG, gameKey };
+  const all = await data.matches.listByTournamentId(t.id);
+  // 只計已完成、且 win/draw 的對局（void 不計）
+  const rated = all
+    .filter((m) => m.status === 'finished' && m.result)
+    .filter((m) => {
+      const k = (m.result as { kind?: string }).kind;
+      return k === 'win' || k === 'draw';
+    })
+    .sort((a, b) => a.roundNo - b.roundNo);
+
+  const job = await data.ratings.createJob(t.id, gameKey, triggeredBy);
+  try {
+    const playerIds = [...new Set(rated.flatMap((m) => [m.playerAId, m.playerBId]))];
+    const existing = await data.ratings.getPlayerRatings(playerIds, gameKey);
+    const prMap = new Map(existing.map((p) => [p.playerId, p]));
+    const ratingMap = new Map<string, number>();
+    const stat = new Map<string, { games: number; wins: number; draws: number; losses: number; peak: number; lowest: number }>();
+    for (const pid of playerIds) {
+      const pr = prMap.get(pid);
+      const start = pr?.currentRating ?? config.defaultRating;
+      ratingMap.set(pid, start);
+      stat.set(pid, {
+        games: pr?.gamesPlayed ?? 0,
+        wins: pr?.wins ?? 0,
+        draws: pr?.draws ?? 0,
+        losses: pr?.losses ?? 0,
+        peak: pr?.peakRating ?? start,
+        lowest: pr?.lowestRating ?? start,
+      });
+    }
+
+    const history: RatingHistoryRow[] = [];
+    const now = new Date().toISOString();
+    const applyStat = (pid: string, outcome: 'win' | 'draw' | 'loss', newRating: number) => {
+      const s = stat.get(pid)!;
+      s.games += 1;
+      if (outcome === 'win') s.wins += 1;
+      else if (outcome === 'draw') s.draws += 1;
+      else s.losses += 1;
+      s.peak = Math.max(s.peak, newRating);
+      s.lowest = Math.min(s.lowest, newRating);
+    };
+
+    for (const m of rated) {
+      const res = m.result as { kind: string; winner?: string };
+      const rA = ratingMap.get(m.playerAId)!;
+      const rB = ratingMap.get(m.playerBId)!;
+      const kA = calculateKFactor(rA, config);
+      const kB = calculateKFactor(rB, config);
+      const outA: 'win' | 'draw' | 'loss' = res.kind === 'draw' ? 'draw' : res.winner === 'A' ? 'win' : 'loss';
+      const outB: 'win' | 'draw' | 'loss' = outA === 'win' ? 'loss' : outA === 'loss' ? 'win' : 'draw';
+      const nA = clampRating(rA + calculateEloChange({ playerRating: rA, opponentRating: rB, matchResult: outA, kFactor: kA }), config);
+      const nB = clampRating(rB + calculateEloChange({ playerRating: rB, opponentRating: rA, matchResult: outB, kFactor: kB }), config);
+      ratingMap.set(m.playerAId, nA);
+      ratingMap.set(m.playerBId, nB);
+      applyStat(m.playerAId, outA, nA);
+      applyStat(m.playerBId, outB, nB);
+      history.push(
+        { id: '', playerId: m.playerAId, gameKey, matchId: m.id, tournamentId: t.id, ratingBefore: rA, ratingAfter: nA, ratingChange: nA - rA, kFactorUsed: kA, opponentRating: rB, matchResult: outA, calculatedAt: now },
+        { id: '', playerId: m.playerBId, gameKey, matchId: m.id, tournamentId: t.id, ratingBefore: rB, ratingAfter: nB, ratingChange: nB - rB, kFactorUsed: kB, opponentRating: rA, matchResult: outB, calculatedAt: now }
+      );
+    }
+
+    await data.ratings.appendHistory(history);
+    for (const pid of playerIds) {
+      const s = stat.get(pid)!;
+      await data.ratings.upsertPlayerRating({
+        playerId: pid,
+        gameKey,
+        currentRating: ratingMap.get(pid)!,
+        peakRating: s.peak,
+        lowestRating: s.lowest,
+        gamesPlayed: s.games,
+        wins: s.wins,
+        draws: s.draws,
+        losses: s.losses,
+      });
+    }
+    await data.ratings.updateJob(job.id, { status: 'completed', matchesProcessed: rated.length, playersAffected: playerIds.length });
+    return { matchesProcessed: rated.length, playersAffected: playerIds.length };
+  } catch (e: any) {
+    await data.ratings.updateJob(job.id, { status: 'failed', errorMessage: e?.message ?? String(e) });
+    throw e;
+  }
+}
+
+// 觸發計算（主辦管理者）。同賽事已計算過回 409（MVP 不支援重算）。
+app.post('/api/tournaments/:id/calculate-ratings', async (req, reply) => {
+  const caller = await requireCaller(req, reply);
+  if (!caller) return;
+  const id = (req.params as any).id as string;
+  const data = getData();
+  const t = await data.tournaments.get(id);
+  if (!t) return reply.code(404).send({ code: 'NOT_FOUND' });
+  if (!(await hasTournamentManageAccess(data, caller, t.id))) return reply.code(403).send({ code: 'FORBIDDEN' });
+  const done = await data.ratings.findCompletedJob(t.id, t.gameKey);
+  if (done) return reply.code(409).send({ code: 'ALREADY_RATED', message: '此賽事已計算過等級分（MVP 不支援重算）。' });
+  const result = await computeTournamentRatings(data, t, caller.userId);
+  return result;
+});
+
+// 公開：等級分排行榜
+app.get('/api/ratings/:gameKey/leaderboard', async (req, reply) => {
+  const gameKey = (req.params as any).gameKey as string;
+  if (!['go', 'chess', 'xiangqi', 'gomoku'].includes(gameKey)) return reply.code(400).send({ code: 'INVALID_GAME_KEY' });
+  const q = req.query as { limit?: string; offset?: string };
+  const limit = q.limit != null ? Math.min(200, Math.max(1, parseInt(q.limit, 10) || 100)) : 100;
+  const offset = q.offset != null ? Math.max(0, parseInt(q.offset, 10) || 0) : 0;
+  const data = getData();
+  return data.ratings.leaderboard(gameKey, limit, offset);
+});
+
+// 公開：單一棋手某棋種的等級分與變化歷史
+app.get('/api/players/:id/ratings/:gameKey', async (req, reply) => {
+  const playerId = (req.params as any).id as string;
+  const gameKey = (req.params as any).gameKey as string;
+  if (!['go', 'chess', 'xiangqi', 'gomoku'].includes(gameKey)) return reply.code(400).send({ code: 'INVALID_GAME_KEY' });
+  const data = getData();
+  const [rating] = await data.ratings.getPlayerRatings([playerId], gameKey);
+  const history = await data.ratings.listHistory(playerId, gameKey, 50);
+  return { rating: rating ?? null, history };
 });
 
 // 公開：分組報名清單（僅已發布或之後狀態的賽事可查，回傳 userId、categoryKey 供前端分組顯示）
@@ -1170,6 +1570,77 @@ app.get('/api/public/tournaments/:tournamentId/registrations', async (req, reply
   if (!allowedStatuses.includes(t.status)) return reply.code(404).send({ code: 'NOT_FOUND' });
   const list = await data.registrations.listByTournamentId(tournamentId);
   return list.map((r) => ({ userId: r.userId, categoryKey: r.categoryKey ?? null }));
+});
+
+// 公開：官方成績（匯入賽事的原始名次/輔分/升段 + 每組各輪對局）
+// - 無 categoryKey：回傳組別清單（含每組人數）
+// - 有 categoryKey：回傳該組官方名次表 + 對局清單（以代碼/編號呈現）
+app.get('/api/public/tournaments/:tournamentId/official-results', async (req, reply) => {
+  const tournamentId = (req.params as any).tournamentId as string;
+  const data = getData();
+  const t = await data.tournaments.get(tournamentId);
+  if (!t) return reply.code(404).send({ code: 'NOT_FOUND' });
+  const allowedStatuses = ['published', 'checkin_open', 'pairing_ready', 'in_progress', 'closed', 'cancelled'];
+  if (!allowedStatuses.includes(t.status)) return reply.code(404).send({ code: 'NOT_FOUND' });
+  const pool = getPool();
+  if (!pool) return reply.code(501).send({ code: 'DB_REQUIRED', message: '此功能需連線資料庫。' });
+
+  const cats = await data.tournamentCategories.listByTournamentId(tournamentId);
+  const counts = await pool.query(
+    `select category_key, count(*)::int n from tournament_official_results where tournament_id=$1 group by category_key`,
+    [tournamentId]
+  );
+  const countMap = new Map<string, number>(counts.rows.map((r: any) => [r.category_key, r.n]));
+  const categories = cats
+    .map((c) => ({ key: c.key, displayName: c.displayName, sortOrder: c.sortOrder, players: countMap.get(c.key) ?? 0 }))
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+
+  const filter = normalizeGroupKey((req.query as any)?.categoryKey);
+  if (!filter) return { tournament: { id: t.id, name: t.name, gameKey: t.gameKey, status: t.status }, categories };
+  if (!categories.some((c) => c.key === filter)) return reply.code(404).send({ code: 'CATEGORY_NOT_FOUND' });
+
+  const resultsQ = await pool.query(
+    `select seed_no, anon_code, final_rank, tiebreak1, tiebreak2, tiebreak3, tiebreak4, wins, is_playoff, promoted_to
+       from tournament_official_results
+      where tournament_id=$1 and category_key=$2
+      order by final_rank nulls last, seed_no`,
+    [tournamentId, filter]
+  );
+  const results = resultsQ.rows.map((r: any) => ({
+    seedNo: r.seed_no,
+    code: r.anon_code,
+    rank: r.final_rank,
+    tiebreaks: [r.tiebreak1, r.tiebreak2, r.tiebreak3, r.tiebreak4].map((v) => (v == null ? null : Number(v))),
+    wins: r.wins,
+    isPlayoff: r.is_playoff,
+    promotedTo: r.promoted_to,
+  }));
+
+  const matchesQ = await pool.query(
+    `select m.round_no,
+            ora.seed_no a_seed, ora.anon_code a_code,
+            orb.seed_no b_seed, orb.anon_code b_code,
+            m.result
+       from matches m
+       join registrations ra on ra.tournament_id=m.tournament_id and ra.user_id=m.player_a_id
+       join registrations rb on rb.tournament_id=m.tournament_id and rb.user_id=m.player_b_id
+       join tournament_official_results ora on ora.registration_id=ra.id
+       join tournament_official_results orb on orb.registration_id=rb.id
+      where m.tournament_id=$1 and m.category_key=$2
+      order by m.round_no, ora.seed_no`,
+    [tournamentId, filter]
+  );
+  const matches = matchesQ.rows.map((m: any) => {
+    const winner = (m.result && (m.result as any).kind === 'win') ? (m.result as any).winner : null;
+    return {
+      roundNo: m.round_no,
+      a: { seedNo: m.a_seed, code: m.a_code },
+      b: { seedNo: m.b_seed, code: m.b_code },
+      winnerSeed: winner === 'A' ? m.a_seed : winner === 'B' ? m.b_seed : null,
+    };
+  });
+
+  return { tournament: { id: t.id, name: t.name }, categoryKey: filter, results, matches };
 });
 
 // ===== Tournament Roles（裁判/工作人員指派 + 時間衝突檢查）=====
@@ -1233,6 +1704,24 @@ app.delete('/api/tournaments/:tournamentId/roles/:roleId', async (req, reply) =>
   if (!existing) return reply.code(404).send({ code: 'NOT_FOUND' });
   await data.tournamentRoles.delete(roleId);
   return reply.code(204).send();
+});
+
+// 開發／E2E：尚無 platform_admin 時，允許目前登入者自封為總管（需 OTC_ALLOW_DEV_BOOTSTRAP=1）
+app.post('/api/dev/promote-platform-admin', async (req, reply) => {
+  if (process.env.OTC_ALLOW_DEV_BOOTSTRAP !== '1') {
+    return reply.code(404).send({ code: 'NOT_FOUND' });
+  }
+  const caller = await requireCaller(req, reply);
+  if (!caller) return;
+  const data = getData();
+  await data.ensureUser(caller.userId);
+  const { items } = await data.users.list({ limit: 500 });
+  if (items.some((u) => u.platformRole === 'platform_admin')) {
+    return reply.code(409).send({ code: 'ALREADY_HAS_ADMIN', message: '已有平台總管' });
+  }
+  const updated = await data.users.update(caller.userId, { platformRole: 'platform_admin' });
+  if (!updated) return reply.code(404).send({ code: 'NOT_FOUND' });
+  return serializeUser(updated, { admin: true });
 });
 
 const port = Number(process.env.PORT ?? 3875);

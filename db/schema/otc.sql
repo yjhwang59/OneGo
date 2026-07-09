@@ -120,6 +120,21 @@ create table if not exists tournament_roles (
 create index if not exists idx_tournament_roles_tournament on tournament_roles(tournament_id);
 create index if not exists idx_tournament_roles_user on tournament_roles(user_id);
 
+-- 賽事組別定義（段位組、級位組等）；報名/對局以 category_key 引用 key
+create table if not exists tournament_categories (
+  id uuid primary key default gen_random_uuid(),
+  tournament_id uuid not null references tournaments(id) on delete cascade,
+  key text not null,
+  display_name text not null,
+  sort_order int not null default 0,
+  capacity int null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint uq_tournament_category_key unique (tournament_id, key)
+);
+
+create index if not exists idx_tournament_categories_tournament on tournament_categories(tournament_id);
+
 create table if not exists matches (
   id uuid primary key default gen_random_uuid(),
   tournament_id uuid not null references tournaments(id) on delete cascade,

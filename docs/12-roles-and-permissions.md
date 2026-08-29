@@ -43,6 +43,8 @@
 
 `npm run rbac:seed`：於本機 DB 建立一組完整角色階層（平台總管／主辦 owner·admin·staff／賽事 organizer·referee／參賽者）與一場進行中賽事，方便以「模擬登入」逐一驗證各角色權限。需先啟動 API。
 
+擬真姓名與多狀態賽事場景（建議日常演示）：`npm run seed:realistic`，說明見 [15-roles-usecases-and-test-data.md](15-roles-usecases-and-test-data.md)。
+
 ## 5. 系統總管理員（platform_admin）能力
 
 `platform_admin` 是**系統總管理員**，可管理全平台所有資料與功能，具體實作於 [apps/api/src/rbac.ts](../apps/api/src/rbac.ts)：

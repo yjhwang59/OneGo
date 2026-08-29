@@ -3,23 +3,34 @@ import { getPool } from './db';
 import type {
   CheckIn,
   Match,
+  MatchEntryKind,
+  MatchFoul,
+  MatchResultAudit,
   Organization,
   OrganizationMembership,
   Payment,
+  PlayerRatingRow,
+  RatingHistoryRow,
+  RatingJob,
   Registration,
+  ScoreAdjustment,
   Tournament,
+  TournamentCategory,
   TournamentRole,
   User
 } from './store';
 import type { NormalizedMatchResult } from '@otc/rules';
 import { store } from './store';
 import * as checkinsRepo from './repos/checkins';
+import * as ratingsRepo from './repos/ratings';
 import * as matchesRepo from './repos/matches';
 import * as orgMembershipsRepo from './repos/org-memberships';
 import * as organizationsRepo from './repos/organizations';
 import * as paymentsRepo from './repos/payments';
 import * as registrationsRepo from './repos/registrations';
+import * as scoringRepo from './repos/scoring';
 import type { TournamentUpdateParams } from './repos/tournaments';
+import * as tournamentCategoriesRepo from './repos/tournament-categories';
 import * as tournamentRolesRepo from './repos/tournament-roles';
 import * as tournamentsRepo from './repos/tournaments';
 import * as usersRepo from './repos/users';
@@ -39,13 +50,15 @@ export type DataSource = {
 
   users: {
     get(id: string): Promise<User | null>;
-    list(opts?: { limit?: number; offset?: number; q?: string }): Promise<User[]>;
+    list(opts?: { limit?: number; offset?: number; q?: string }): Promise<{ items: User[]; total: number }>;
     create(params: { id: string; displayName: string; email?: string | null; platformRole?: string | null }): Promise<User>;
     update(
       id: string,
       params: { displayName?: string; email?: string | null; platformRole?: string | null; status?: 'active' | 'suspended' }
     ): Promise<User | null>;
     delete(id: string): Promise<boolean>;
+    /** 檢查 email 是否已被其他用戶使用 */
+    isEmailTaken(email: string, excludeUserId?: string): Promise<boolean>;
   };
   organizations: {
     create(params: { name: string; slug: string }, ownerUserId: string): Promise<Organization>;
@@ -93,6 +106,23 @@ export type DataSource = {
     delete(roleId: string): Promise<boolean>;
     find(tournamentId: string, userId: string, role: string): Promise<TournamentRole | null>;
   };
+  tournamentCategories: {
+    create(params: {
+      tournamentId: string;
+      key: string;
+      displayName: string;
+      sortOrder?: number;
+      capacity?: number | null;
+    }): Promise<TournamentCategory>;
+    get(id: string): Promise<TournamentCategory | null>;
+    listByTournamentId(tournamentId: string): Promise<TournamentCategory[]>;
+    update(
+      id: string,
+      params: { displayName?: string; sortOrder?: number; capacity?: number | null }
+    ): Promise<TournamentCategory | null>;
+    delete(id: string): Promise<boolean>;
+    countRegistrations(tournamentId: string, categoryKey: string): Promise<number>;
+  };
   registrations: {
     create(params: {
       tournamentId: string;
@@ -101,6 +131,8 @@ export type DataSource = {
     }): Promise<Registration>;
     get(id: string): Promise<Registration | null>;
     updateStatus(id: string, status: Registration['status']): Promise<Registration | null>;
+    updateCategoryKey(id: string, categoryKey: string): Promise<Registration | null>;
+    updateSeedNo(id: string, seedNo: number | null): Promise<Registration | null>;
     listByTournamentId(tournamentId: string): Promise<Registration[]>;
     listByUserId(userId: string): Promise<Registration[]>;
     find(tournamentId: string, userId: string): Promise<Registration | null>;
@@ -127,8 +159,11 @@ export type DataSource = {
       tableNo?: number;
       categoryKey?: string;
       playerAId: string;
-      playerBId: string;
+      playerBId?: string;
       firstMove?: 'A' | 'B';
+      entryKind?: MatchEntryKind;
+      status?: Match['status'];
+      result?: NormalizedMatchResult;
     }): Promise<Match>;
     createMany(
       list: Array<{
@@ -137,13 +172,50 @@ export type DataSource = {
         tableNo?: number;
         categoryKey?: string;
         playerAId: string;
-        playerBId: string;
+        playerBId?: string;
         firstMove?: 'A' | 'B';
+        entryKind?: MatchEntryKind;
+        status?: Match['status'];
+        result?: NormalizedMatchResult;
       }>
     ): Promise<Match[]>;
     get(id: string): Promise<Match | null>;
     updateResult(id: string, result: NormalizedMatchResult): Promise<Match | null>;
     listByTournamentId(tournamentId: string, roundNo?: number): Promise<Match[]>;
+  };
+  scoring: {
+    createFoul(params: {
+      matchId: string;
+      playerId: string;
+      kind: string;
+      note?: string | null;
+      recordedBy: string;
+    }): Promise<MatchFoul>;
+    listFoulsByTournament(tournamentId: string): Promise<MatchFoul[]>;
+    createAdjustment(params: {
+      tournamentId: string;
+      playerId: string;
+      delta: number;
+      reason: string;
+      recordedBy: string;
+    }): Promise<ScoreAdjustment>;
+    listAdjustments(tournamentId: string): Promise<ScoreAdjustment[]>;
+    createAudit(params: {
+      matchId: string;
+      resultBefore?: NormalizedMatchResult | null;
+      resultAfter: NormalizedMatchResult;
+      changedBy: string;
+    }): Promise<MatchResultAudit>;
+  };
+  ratings: {
+    getPlayerRatings(playerIds: string[], gameKey: string): Promise<PlayerRatingRow[]>;
+    leaderboard(gameKey: string, limit: number, offset: number): Promise<PlayerRatingRow[]>;
+    upsertPlayerRating(row: PlayerRatingRow): Promise<void>;
+    appendHistory(rows: RatingHistoryRow[]): Promise<void>;
+    listHistory(playerId: string, gameKey: string, limit: number): Promise<RatingHistoryRow[]>;
+    findCompletedJob(tournamentId: string, gameKey: string): Promise<RatingJob | null>;
+    createJob(tournamentId: string, gameKey: string, triggeredBy: string | null): Promise<RatingJob>;
+    updateJob(id: string, patch: { status?: RatingJob['status']; matchesProcessed?: number; playersAffected?: number; errorMessage?: string | null }): Promise<void>;
   };
 };
 
@@ -205,7 +277,8 @@ function createInMemoryDataSource(): DataSource {
           );
         }
         list.sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1));
-        return list.slice(offset, offset + limit);
+        const total = list.length;
+        return { items: list.slice(offset, offset + limit), total };
       },
       async create(params) {
         const u: User = {
@@ -239,6 +312,15 @@ function createInMemoryDataSource(): DataSource {
         };
         store.users.set(id, updated);
         return updated;
+      },
+      async isEmailTaken(email: string, excludeUserId?: string) {
+        const lower = email.trim().toLowerCase();
+        if (!lower) return false;
+        for (const u of store.users.values()) {
+          if (excludeUserId && u.id === excludeUserId) continue;
+          if (u.email && u.email.toLowerCase() === lower) return true;
+        }
+        return false;
       }
     },
     organizations: {
@@ -426,6 +508,53 @@ function createInMemoryDataSource(): DataSource {
         return null;
       }
     },
+    tournamentCategories: {
+      async create(params) {
+        const id = store.newId();
+        const now = store.nowIso();
+        const c: TournamentCategory = {
+          id,
+          tournamentId: params.tournamentId,
+          key: params.key,
+          displayName: params.displayName,
+          sortOrder: params.sortOrder ?? 0,
+          capacity: params.capacity ?? null,
+          createdAt: now,
+          updatedAt: now
+        };
+        store.tournamentCategories.set(id, c);
+        return c;
+      },
+      async get(id) {
+        return store.tournamentCategories.get(id) ?? null;
+      },
+      async listByTournamentId(tournamentId) {
+        return [...store.tournamentCategories.values()]
+          .filter((c) => c.tournamentId === tournamentId)
+          .sort((a, b) => a.sortOrder - b.sortOrder || a.displayName.localeCompare(b.displayName));
+      },
+      async update(id, params) {
+        const c = store.tournamentCategories.get(id);
+        if (!c) return null;
+        const updated: TournamentCategory = {
+          ...c,
+          ...(params.displayName !== undefined && { displayName: params.displayName }),
+          ...(params.sortOrder !== undefined && { sortOrder: params.sortOrder }),
+          ...(params.capacity !== undefined && { capacity: params.capacity }),
+          updatedAt: store.nowIso()
+        };
+        store.tournamentCategories.set(id, updated);
+        return updated;
+      },
+      async delete(id) {
+        return store.tournamentCategories.delete(id);
+      },
+      async countRegistrations(tournamentId, categoryKey) {
+        return [...store.registrations.values()].filter(
+          (r) => r.tournamentId === tournamentId && r.status !== 'cancelled' && r.categoryKey === categoryKey
+        ).length;
+      }
+    },
     registrations: {
       async create(params) {
         const id = store.newId();
@@ -449,6 +578,20 @@ function createInMemoryDataSource(): DataSource {
         const r = store.registrations.get(id);
         if (!r) return null;
         const updated = { ...r, status, updatedAt: store.nowIso() };
+        store.registrations.set(id, updated);
+        return updated;
+      },
+      async updateCategoryKey(id, categoryKey) {
+        const r = store.registrations.get(id);
+        if (!r) return null;
+        const updated = { ...r, categoryKey, updatedAt: store.nowIso() };
+        store.registrations.set(id, updated);
+        return updated;
+      },
+      async updateSeedNo(id, seedNo) {
+        const r = store.registrations.get(id);
+        if (!r) return null;
+        const updated = { ...r, seedNo, updatedAt: store.nowIso() };
         store.registrations.set(id, updated);
         return updated;
       },
@@ -532,6 +675,7 @@ function createInMemoryDataSource(): DataSource {
       async create(params) {
         const id = store.newId();
         const now = store.nowIso();
+        const status = params.status ?? 'scheduled';
         const m: Match = {
           id,
           tournamentId: params.tournamentId,
@@ -541,9 +685,12 @@ function createInMemoryDataSource(): DataSource {
           playerAId: params.playerAId,
           playerBId: params.playerBId,
           firstMove: params.firstMove,
-          status: 'scheduled',
+          entryKind: params.entryKind ?? 'normal',
+          status,
+          result: params.result,
           createdAt: now,
-          updatedAt: now
+          updatedAt: now,
+          ...(status === 'finished' && { finishedAt: now })
         };
         store.matches.set(m.id, m);
         return m;
@@ -573,6 +720,114 @@ function createInMemoryDataSource(): DataSource {
           return true;
         });
       }
+    },
+    scoring: {
+      async createFoul(params) {
+        const id = store.newId();
+        const foul: MatchFoul = {
+          id,
+          matchId: params.matchId,
+          playerId: params.playerId,
+          kind: params.kind,
+          note: params.note ?? null,
+          recordedBy: params.recordedBy,
+          createdAt: store.nowIso()
+        };
+        store.matchFouls.set(id, foul);
+        return foul;
+      },
+      async listFoulsByTournament(tournamentId) {
+        return [...store.matchFouls.values()].filter((f) => {
+          const m = store.matches.get(f.matchId);
+          return m?.tournamentId === tournamentId;
+        });
+      },
+      async createAdjustment(params) {
+        const id = store.newId();
+        const adj: ScoreAdjustment = {
+          id,
+          tournamentId: params.tournamentId,
+          playerId: params.playerId,
+          delta: params.delta,
+          reason: params.reason,
+          recordedBy: params.recordedBy,
+          createdAt: store.nowIso()
+        };
+        store.scoreAdjustments.set(id, adj);
+        return adj;
+      },
+      async listAdjustments(tournamentId) {
+        return [...store.scoreAdjustments.values()].filter((a) => a.tournamentId === tournamentId);
+      },
+      async createAudit(params) {
+        const id = store.newId();
+        const audit: MatchResultAudit = {
+          id,
+          matchId: params.matchId,
+          resultBefore: params.resultBefore ?? null,
+          resultAfter: params.resultAfter,
+          changedBy: params.changedBy,
+          createdAt: store.nowIso()
+        };
+        store.matchResultAudits.set(id, audit);
+        return audit;
+      }
+    },
+    ratings: {
+      async getPlayerRatings(playerIds, gameKey) {
+        return playerIds
+          .map((pid) => store.playerRatings.get(`${pid}:${gameKey}`))
+          .filter((x): x is PlayerRatingRow => !!x);
+      },
+      async leaderboard(gameKey, limit, offset) {
+        return [...store.playerRatings.values()]
+          .filter((r) => r.gameKey === gameKey)
+          .sort((a, b) => b.currentRating - a.currentRating || b.gamesPlayed - a.gamesPlayed)
+          .slice(offset, offset + limit);
+      },
+      async upsertPlayerRating(row) {
+        store.playerRatings.set(`${row.playerId}:${row.gameKey}`, { ...row, lastCalculatedAt: store.nowIso() });
+      },
+      async appendHistory(rows) {
+        for (const h of rows) {
+          const id = store.newId();
+          store.ratingHistory.set(id, { ...h, id, calculatedAt: h.calculatedAt || store.nowIso() });
+        }
+      },
+      async listHistory(playerId, gameKey, limit) {
+        return [...store.ratingHistory.values()]
+          .filter((h) => h.playerId === playerId && h.gameKey === gameKey)
+          .sort((a, b) => (a.calculatedAt < b.calculatedAt ? 1 : -1))
+          .slice(0, limit);
+      },
+      async findCompletedJob(tournamentId, gameKey) {
+        return (
+          [...store.ratingJobs.values()].find(
+            (j) => j.tournamentId === tournamentId && j.gameKey === gameKey && j.status === 'completed'
+          ) ?? null
+        );
+      },
+      async createJob(tournamentId, gameKey, triggeredBy) {
+        const job: RatingJob = {
+          id: store.newId(),
+          tournamentId,
+          gameKey: gameKey as RatingJob['gameKey'],
+          status: 'processing',
+          matchesProcessed: 0,
+          playersAffected: 0,
+          triggeredBy,
+          createdAt: store.nowIso()
+        };
+        store.ratingJobs.set(job.id, job);
+        return job;
+      },
+      async updateJob(id, patch) {
+        const j = store.ratingJobs.get(id);
+        if (!j) return;
+        Object.assign(j, patch);
+        if (patch.status === 'completed' || patch.status === 'failed') j.completedAt = store.nowIso();
+        store.ratingJobs.set(id, j);
+      }
     }
   };
 }
@@ -597,6 +852,9 @@ function createPgDataSource(pool: NonNullable<ReturnType<typeof getPool>>): Data
       },
       async list(opts) {
         return usersRepo.listUsers(pool, opts ?? {});
+      },
+      async isEmailTaken(email: string, excludeUserId?: string) {
+        return usersRepo.isEmailTaken(pool, email, excludeUserId);
       },
       async create(params) {
         return usersRepo.createUser(pool, params);
@@ -723,6 +981,33 @@ function createPgDataSource(pool: NonNullable<ReturnType<typeof getPool>>): Data
         return tournamentRolesRepo.findTournamentRole(pool, tournamentId, userId, role);
       }
     },
+    tournamentCategories: {
+      async create(params) {
+        return tournamentCategoriesRepo.createTournamentCategory(pool, {
+          id: randomUUID(),
+          tournamentId: params.tournamentId,
+          key: params.key,
+          displayName: params.displayName,
+          sortOrder: params.sortOrder,
+          capacity: params.capacity
+        });
+      },
+      async get(id) {
+        return tournamentCategoriesRepo.getTournamentCategory(pool, id);
+      },
+      async listByTournamentId(tournamentId) {
+        return tournamentCategoriesRepo.listTournamentCategoriesByTournamentId(pool, tournamentId);
+      },
+      async update(id, params) {
+        return tournamentCategoriesRepo.updateTournamentCategory(pool, id, params);
+      },
+      async delete(id) {
+        return tournamentCategoriesRepo.deleteTournamentCategory(pool, id);
+      },
+      async countRegistrations(tournamentId, categoryKey) {
+        return tournamentCategoriesRepo.countRegistrationsByCategoryKey(pool, tournamentId, categoryKey);
+      }
+    },
     registrations: {
       async create(params) {
         return registrationsRepo.createRegistration(pool, {
@@ -737,6 +1022,12 @@ function createPgDataSource(pool: NonNullable<ReturnType<typeof getPool>>): Data
       },
       async updateStatus(id, status) {
         return registrationsRepo.updateRegistrationStatus(pool, id, status);
+      },
+      async updateCategoryKey(id, categoryKey) {
+        return registrationsRepo.updateRegistrationCategoryKey(pool, id, categoryKey);
+      },
+      async updateSeedNo(id, seedNo) {
+        return registrationsRepo.updateRegistrationSeedNo(pool, id, seedNo);
       },
       async listByTournamentId(tournamentId) {
         return registrationsRepo.listRegistrationsByTournamentId(pool, tournamentId);
@@ -799,7 +1090,10 @@ function createPgDataSource(pool: NonNullable<ReturnType<typeof getPool>>): Data
           categoryKey: params.categoryKey,
           playerAId: params.playerAId,
           playerBId: params.playerBId,
-          firstMove: params.firstMove
+          firstMove: params.firstMove,
+          entryKind: params.entryKind,
+          status: params.status,
+          result: params.result
         });
       },
       async createMany(list) {
@@ -813,7 +1107,10 @@ function createPgDataSource(pool: NonNullable<ReturnType<typeof getPool>>): Data
             categoryKey: p.categoryKey,
             playerAId: p.playerAId,
             playerBId: p.playerBId,
-            firstMove: p.firstMove
+            firstMove: p.firstMove,
+            entryKind: p.entryKind,
+            status: p.status,
+            result: p.result
           }))
         );
       },
@@ -825,6 +1122,69 @@ function createPgDataSource(pool: NonNullable<ReturnType<typeof getPool>>): Data
       },
       async listByTournamentId(tournamentId, roundNo) {
         return matchesRepo.listMatchesByTournamentId(pool, tournamentId, roundNo);
+      }
+    },
+    scoring: {
+      async createFoul(params) {
+        return scoringRepo.createMatchFoul(pool, {
+          id: randomUUID(),
+          matchId: params.matchId,
+          playerId: params.playerId,
+          kind: params.kind,
+          note: params.note,
+          recordedBy: params.recordedBy
+        });
+      },
+      async listFoulsByTournament(tournamentId) {
+        return scoringRepo.listFoulsByTournament(pool, tournamentId);
+      },
+      async createAdjustment(params) {
+        return scoringRepo.createScoreAdjustment(pool, {
+          id: randomUUID(),
+          tournamentId: params.tournamentId,
+          playerId: params.playerId,
+          delta: params.delta,
+          reason: params.reason,
+          recordedBy: params.recordedBy
+        });
+      },
+      async listAdjustments(tournamentId) {
+        return scoringRepo.listScoreAdjustments(pool, tournamentId);
+      },
+      async createAudit(params) {
+        return scoringRepo.createMatchResultAudit(pool, {
+          id: randomUUID(),
+          matchId: params.matchId,
+          resultBefore: params.resultBefore,
+          resultAfter: params.resultAfter,
+          changedBy: params.changedBy
+        });
+      }
+    },
+    ratings: {
+      async getPlayerRatings(playerIds, gameKey) {
+        return ratingsRepo.getPlayerRatings(pool, playerIds, gameKey);
+      },
+      async leaderboard(gameKey, limit, offset) {
+        return ratingsRepo.leaderboard(pool, gameKey, limit, offset);
+      },
+      async upsertPlayerRating(row) {
+        return ratingsRepo.upsertPlayerRating(pool, row);
+      },
+      async appendHistory(rows) {
+        return ratingsRepo.appendHistory(pool, rows);
+      },
+      async listHistory(playerId, gameKey, limit) {
+        return ratingsRepo.listHistory(pool, playerId, gameKey, limit);
+      },
+      async findCompletedJob(tournamentId, gameKey) {
+        return ratingsRepo.findCompletedJob(pool, tournamentId, gameKey);
+      },
+      async createJob(tournamentId, gameKey, triggeredBy) {
+        return ratingsRepo.createJob(pool, tournamentId, gameKey, triggeredBy);
+      },
+      async updateJob(id, patch) {
+        return ratingsRepo.updateJob(pool, id, patch);
       }
     }
   };

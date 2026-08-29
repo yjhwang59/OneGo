@@ -9,6 +9,7 @@ const TABS = [
   { href: "/me", label: "總覽" },
   { href: "/me/registrations", label: "我的報名" },
   { href: "/me/record", label: "戰績履歷" },
+  { href: "/me/settings", label: "帳號設定" },
 ];
 
 export default function MeLayout({ children }: { children: ReactNode }) {

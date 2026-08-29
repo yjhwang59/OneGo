@@ -120,6 +120,21 @@ create table if not exists tournament_roles (
 create index if not exists idx_tournament_roles_tournament on tournament_roles(tournament_id);
 create index if not exists idx_tournament_roles_user on tournament_roles(user_id);
 
+-- 賽事組別定義（段位組、級位組等）；報名/對局以 category_key 引用 key
+create table if not exists tournament_categories (
+  id uuid primary key default gen_random_uuid(),
+  tournament_id uuid not null references tournaments(id) on delete cascade,
+  key text not null,
+  display_name text not null,
+  sort_order int not null default 0,
+  capacity int null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint uq_tournament_category_key unique (tournament_id, key)
+);
+
+create index if not exists idx_tournament_categories_tournament on tournament_categories(tournament_id);
+
 create table if not exists matches (
   id uuid primary key default gen_random_uuid(),
   tournament_id uuid not null references tournaments(id) on delete cascade,
@@ -183,5 +198,60 @@ create table if not exists checkins (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- ===== 成績計算子系統（Scoring Subsystem）=====
+-- 勝分／輪空給分／對手分取捨（觀音盃段位組 sos_keep_top=7）
+alter table tournaments add column if not exists win_point numeric(5,2) not null default 1.00;
+alter table tournaments add column if not exists bye_point numeric(5,2) null;
+alter table tournaments add column if not exists sos_keep_top int null;
+
+-- 輪空：player_b_id 可為 null；entry_kind 區分 normal/bye/absent
+alter table matches alter column player_b_id drop not null;
+alter table matches add column if not exists entry_kind text not null default 'normal';
+alter table matches drop constraint if exists matches_no_self_play;
+alter table matches add constraint matches_no_self_play
+  check (player_b_id is null or player_a_id <> player_b_id);
+
+-- 籤號
+alter table registrations add column if not exists seed_no int null;
+create unique index if not exists uq_reg_seed
+  on registrations(tournament_id, seed_no)
+  where seed_no is not null;
+
+-- 技術犯規計次
+create table if not exists match_fouls (
+  id uuid primary key default gen_random_uuid(),
+  match_id uuid not null references matches(id) on delete cascade,
+  player_id text not null references users(id) on delete restrict,
+  kind text not null, -- illegal_move|clock|conduct
+  note text null,
+  recorded_by text not null references users(id) on delete restrict,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_match_fouls_match on match_fouls(match_id);
+create index if not exists idx_match_fouls_player on match_fouls(player_id);
+
+-- 總成績加減分（觀音盃第 4 條扣 0.5）
+create table if not exists tournament_score_adjustments (
+  id uuid primary key default gen_random_uuid(),
+  tournament_id uuid not null references tournaments(id) on delete cascade,
+  player_id text not null references users(id) on delete restrict,
+  delta numeric(6,2) not null,
+  reason text not null,
+  recorded_by text not null references users(id) on delete restrict,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_score_adj_tournament on tournament_score_adjustments(tournament_id);
+
+-- 改判軌跡
+create table if not exists match_result_audits (
+  id uuid primary key default gen_random_uuid(),
+  match_id uuid not null references matches(id) on delete cascade,
+  result_before jsonb null,
+  result_after jsonb not null,
+  changed_by text not null references users(id) on delete restrict,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_match_result_audits_match on match_result_audits(match_id);
 
 

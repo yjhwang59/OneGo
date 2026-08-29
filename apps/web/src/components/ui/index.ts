@@ -7,4 +7,5 @@ export { EmptyState } from "./EmptyState";
 export { Spinner } from "./Spinner";
 export { ErrorBanner } from "./ErrorBanner";
 export { ConfirmDialog } from "./ConfirmDialog";
+export { Modal } from "./Modal";
 export { AntiFraudNotice } from "./AntiFraudNotice";

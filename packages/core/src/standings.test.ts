@@ -6,6 +6,7 @@ import type { NormalizedMatchResult } from '@otc/rules';
 const mockRules: RulesPlugin = {
   gameKey: 'go',
   rulesetVersion: 'v1',
+  defaultWinPoint: 1,
   validateMatchResult: () => ({ ok: true }),
   normalizeMatchResult: () => ({ ok: false, error: { ok: false, code: '', message: '' } }),
   scoreMatch({ result }: { result: NormalizedMatchResult }) {
@@ -15,6 +16,12 @@ const mockRules: RulesPlugin = {
     if (result.kind === 'draw') return { A: { points: 0.5 }, B: { points: 0.5 } };
     return { A: { points: 0 }, B: { points: 0 } };
   },
+  tiebreakSpec: () => [
+    { id: 'sos', label: '輔一', tip: '' },
+    { id: 'sodos_lost', label: '輔二', tip: '' },
+    { id: 'head_to_head', label: '輔三', tip: '' },
+    { id: 'sosos', label: '輔四', tip: '' },
+  ],
 };
 
 describe('computeStandings', () => {

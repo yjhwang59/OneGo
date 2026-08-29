@@ -42,6 +42,7 @@ function WinRateBar({ rate }: { rate: number }) {
 export default function MeRecordPage() {
   const { userId, isAuthenticated } = useUser();
   const [rec, setRec] = useState<RecordResponse | null>(null);
+  const [ratings, setRatings] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,6 +63,21 @@ export default function MeRecordPage() {
         }
         setRec(data);
         setError(null);
+        // 各棋種等級分（若尚未計算則無資料）
+        const games: string[] = Array.isArray(data?.byGame) ? data.byGame.map((g: { gameKey: string }) => g.gameKey) : [];
+        await Promise.all(
+          games.map(async (gk) => {
+            try {
+              const r = await fetch(`/api/otc/players/${encodeURIComponent(userId)}/ratings/${gk}`, { cache: "no-store" });
+              const d = await r.json();
+              if (!cancelled && r.ok && d?.rating?.currentRating != null) {
+                setRatings((prev) => ({ ...prev, [gk]: d.rating.currentRating }));
+              }
+            } catch {
+              /* ignore */
+            }
+          })
+        );
       })
       .catch((e) => !cancelled && setError(e instanceof Error ? e.message : "網路錯誤"))
       .finally(() => !cancelled && setLoading(false));
@@ -128,7 +144,14 @@ export default function MeRecordPage() {
                   <CardBody>
                     <div className="flex items-center justify-between">
                       <GameBadge gameKey={g.gameKey} />
-                      <span className="text-sm text-muted-fg">{g.games} 場</span>
+                      <div className="flex items-center gap-2">
+                        {ratings[g.gameKey] != null && (
+                          <span className="rounded-full bg-brand-subtle px-2 py-0.5 text-xs font-semibold text-brand-subtle-fg">
+                            等級分 {ratings[g.gameKey]}
+                          </span>
+                        )}
+                        <span className="text-sm text-muted-fg">{g.games} 場</span>
+                      </div>
                     </div>
                     <div className="mt-3 grid grid-cols-3 gap-2 text-center">
                       <Stat label="勝" value={g.wins} />

@@ -1,0 +1,20 @@
+{
+  "name": "@otc/scoring",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "echo ok"
+  },
+  "dependencies": {
+    "@otc/rules": "0.2.0"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.0"
+  }
+}

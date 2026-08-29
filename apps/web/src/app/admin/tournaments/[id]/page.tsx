@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useUser } from "@/contexts/UserContext";
 import {
@@ -53,8 +53,10 @@ type Match = {
   tournamentId: string;
   roundNo: number;
   tableNo?: number | null;
+  categoryKey?: string | null;
   playerAId: string;
   playerBId: string;
+  firstMove?: "A" | "B" | null;
   status: string;
   result?: { kind: string; winner?: string } | null;
 };
@@ -65,6 +67,14 @@ type StandingsRow = {
   draws: number;
   losses: number;
   points: number;
+  categoryKey?: string | null;
+};
+type TournamentCategory = {
+  id: string;
+  key: string;
+  displayName: string;
+  sortOrder: number;
+  capacity?: number | null;
 };
 type TournamentRole = { id: string; userId: string; role: string };
 type CheckInEntry = { registrationId: string; status: string };
@@ -106,7 +116,6 @@ type TabId = "overview" | "registrations" | "checkin" | "pairing" | "standings" 
 
 export default function AdminTournamentDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const id = params.id as string;
   const { userId, isAuthenticated, platformRole } = useUser();
 
@@ -120,6 +129,7 @@ export default function AdminTournamentDetailPage() {
   const [checkins, setCheckins] = useState<Record<string, string>>({});
   const [matches, setMatches] = useState<Match[]>([]);
   const [standings, setStandings] = useState<StandingsRow[]>([]);
+  const [categories, setCategories] = useState<TournamentCategory[]>([]);
   const [roles, setRoles] = useState<TournamentRole[]>([]);
 
   const [actionError, setActionError] = useState<string | null>(null);
@@ -129,6 +139,7 @@ export default function AdminTournamentDetailPage() {
   const [savingEdit, setSavingEdit] = useState(false);
 
   const manageable = platformRole === "platform_admin" || callerOrgRole === "owner" || callerOrgRole === "admin";
+  const checkinOperable = manageable || callerOrgRole === "staff";
 
   const load = useCallback(async () => {
     if (!userId || !id) return;
@@ -185,6 +196,12 @@ export default function AdminTournamentDetailPage() {
   const loadRegistrations = useCallback(() => loadList("registrations", setRegistrations as (v: never[]) => void), [loadList]);
   const loadMatches = useCallback(() => loadList("matches", setMatches as (v: never[]) => void), [loadList]);
   const loadStandings = useCallback(() => loadList("standings", setStandings as (v: never[]) => void), [loadList]);
+  const loadCategories = useCallback(async () => {
+    if (!userId || !id) return;
+    const res = await fetch(`/api/otc/tournaments/${id}/categories`, { headers: { "x-user-id": userId } });
+    const data = await res.json().catch(() => []);
+    if (res.ok && Array.isArray(data)) setCategories(data);
+  }, [userId, id]);
   const loadRoles = useCallback(() => loadList("roles", setRoles as (v: never[]) => void), [loadList]);
   const loadCheckins = useCallback(async () => {
     if (!userId || !id) return;
@@ -202,12 +219,13 @@ export default function AdminTournamentDetailPage() {
 
   useEffect(() => {
     if (!tournament || !userId) return;
+    if (tab === "overview") loadCategories();
     if (tab === "registrations") loadRegistrations();
-    if (tab === "checkin") { loadRegistrations(); loadCheckins(); }
+    if (tab === "checkin") { loadRegistrations(); loadCheckins(); loadCategories(); }
     if (tab === "pairing") loadMatches();
-    if (tab === "standings") loadStandings();
+    if (tab === "standings") { loadStandings(); loadCategories(); }
     if (tab === "roles") loadRoles();
-  }, [tournament, userId, tab, loadRegistrations, loadCheckins, loadMatches, loadStandings, loadRoles]);
+  }, [tournament, userId, tab, loadRegistrations, loadCheckins, loadMatches, loadStandings, loadCategories, loadRoles]);
 
   const runEvent = useCallback(async () => {
     if (!userId || !id || !pendingEvent) return;
@@ -294,7 +312,8 @@ export default function AdminTournamentDetailPage() {
           <span className="flex flex-wrap items-center gap-2">
             <GameBadge gameKey={tournament.gameKey} />
             <span>{tournament.format} · {tournament.roundCount} 輪</span>
-            {!manageable && <Badge tone="muted">唯讀（工作人員）</Badge>}
+            {!manageable && callerOrgRole === "staff" && <Badge tone="muted">工作人員（報到／改組）</Badge>}
+            {!manageable && callerOrgRole !== "staff" && <Badge tone="muted">唯讀</Badge>}
           </span>
         }
         actions={
@@ -368,6 +387,10 @@ export default function AdminTournamentDetailPage() {
           setEditForm={setEditForm}
           onSave={handleSaveEdit}
           saving={savingEdit}
+          tournamentId={id}
+          userId={userId!}
+          categories={categories}
+          reloadCategories={loadCategories}
         />
       )}
 
@@ -377,7 +400,8 @@ export default function AdminTournamentDetailPage() {
           manageable={manageable}
           tournamentName={tournament.name}
           userId={userId!}
-          reload={loadRegistrations}
+          categories={categories}
+          reload={async () => { await Promise.all([loadRegistrations(), loadCategories()]); }}
         />
       )}
 
@@ -385,10 +409,11 @@ export default function AdminTournamentDetailPage() {
         <CheckinTab
           registrations={registrations}
           checkins={checkins}
-          manageable={manageable}
+          operable={checkinOperable}
           checkinOpen={tournament.status === "checkin_open"}
           userId={userId!}
-          reload={async () => { await Promise.all([loadRegistrations(), loadCheckins()]); }}
+          categories={categories}
+          reload={async () => { await Promise.all([loadRegistrations(), loadCheckins(), loadCategories()]); }}
         />
       )}
 
@@ -398,7 +423,6 @@ export default function AdminTournamentDetailPage() {
           canPair={canPair}
           manageable={manageable}
           tournamentId={id}
-          gameKey={tournament.gameKey}
           userId={userId!}
           reload={loadMatches}
           setActionError={setActionError}
@@ -406,7 +430,15 @@ export default function AdminTournamentDetailPage() {
       )}
 
       {tab === "standings" && (
-        <StandingsTab standings={standings} reload={loadStandings} />
+        <StandingsTab
+          standings={standings}
+          categories={categories}
+          reload={loadStandings}
+          tournamentId={id}
+          status={tournament.status}
+          manageable={manageable}
+          userId={userId!}
+        />
       )}
 
       {tab === "roles" && manageable && (
@@ -476,6 +508,10 @@ function OverviewTab({
   setEditForm,
   onSave,
   saving,
+  tournamentId,
+  userId,
+  categories,
+  reloadCategories,
 }: {
   tournament: Tournament;
   manageable: boolean;
@@ -484,6 +520,10 @@ function OverviewTab({
   setEditForm: React.Dispatch<React.SetStateAction<Partial<Tournament>>>;
   onSave: () => void;
   saving: boolean;
+  tournamentId: string;
+  userId: string;
+  categories: TournamentCategory[];
+  reloadCategories: () => void;
 }) {
   const inputCls = "mt-1 min-h-[44px] w-full rounded-token-md border border-border bg-surface px-3 text-foreground focus:outline-none focus:ring-2 focus:ring-brand";
   return (
@@ -540,7 +580,137 @@ function OverviewTab({
           </CardBody>
         </Card>
       )}
+
+      <CategoriesSection
+        tournamentId={tournamentId}
+        userId={userId}
+        manageable={manageable}
+        categories={categories}
+        tournamentClosed={tournament.status === "closed" || tournament.status === "cancelled"}
+        reload={reloadCategories}
+      />
     </div>
+  );
+}
+
+function CategoriesSection({
+  tournamentId,
+  userId,
+  manageable,
+  categories,
+  tournamentClosed,
+  reload,
+}: {
+  tournamentId: string;
+  userId: string;
+  manageable: boolean;
+  categories: TournamentCategory[];
+  tournamentClosed: boolean;
+  reload: () => void;
+}) {
+  const [key, setKey] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [capacity, setCapacity] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const add = async () => {
+    if (!key.trim() || !displayName.trim()) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      const res = await fetch(`/api/otc/tournaments/${tournamentId}/categories`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-user-id": userId },
+        body: JSON.stringify({
+          key: key.trim().toLowerCase(),
+          displayName: displayName.trim(),
+          capacity: capacity ? parseInt(capacity, 10) : null,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok) {
+        setKey("");
+        setDisplayName("");
+        setCapacity("");
+        reload();
+      } else {
+        setErr(data?.message ?? data?.code ?? "新增失敗");
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async (categoryId: string) => {
+    setBusy(true);
+    setErr(null);
+    try {
+      const res = await fetch(`/api/otc/tournaments/${tournamentId}/categories/${categoryId}`, {
+        method: "DELETE",
+        headers: { "x-user-id": userId },
+      });
+      if (res.ok || res.status === 204) reload();
+      else {
+        const data = await res.json().catch(() => null);
+        setErr(data?.message ?? data?.code ?? "刪除失敗");
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const inputCls = "mt-1 min-h-[44px] w-full rounded-token-md border border-border bg-surface px-3 text-foreground focus:outline-none focus:ring-2 focus:ring-brand";
+
+  return (
+    <Card>
+      <CardBody>
+        <h2 className="text-base font-semibold text-foreground">賽事組別</h2>
+        <p className="mt-1 text-sm text-muted-fg">
+          {categories.length === 0
+            ? "未設定組別時為單一預設組（相容舊賽事）。"
+            : `已設定 ${categories.length} 個組別；報名時須選組。`}
+        </p>
+        {err && <div className="mt-2"><ErrorBanner>{err}</ErrorBanner></div>}
+        {categories.length > 0 && (
+          <ul className="mt-4 space-y-2">
+            {categories.map((c) => (
+              <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 rounded-token-lg border border-border bg-surface-muted px-3 py-2">
+                <div>
+                  <span className="font-medium text-foreground">{c.displayName}</span>
+                  <span className="ml-2 text-xs text-muted-fg">key: {c.key}</span>
+                  {c.capacity != null && <span className="ml-2 text-xs text-muted-fg">上限 {c.capacity} 人</span>}
+                </div>
+                {manageable && !tournamentClosed && (
+                  <Button size="sm" variant="danger" onClick={() => remove(c.id)} disabled={busy}>刪除</Button>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+        {manageable && !tournamentClosed && (
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <label className="block text-sm">
+              <span className="font-medium text-foreground">Key（英文）</span>
+              <input className={inputCls} placeholder="dan" value={key} onChange={(e) => setKey(e.target.value)} />
+            </label>
+            <label className="block text-sm">
+              <span className="font-medium text-foreground">顯示名稱</span>
+              <input className={inputCls} placeholder="段位組" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+            </label>
+            <label className="block text-sm">
+              <span className="font-medium text-foreground">人數上限（選填）</span>
+              <input type="number" min={1} className={inputCls} value={capacity} onChange={(e) => setCapacity(e.target.value)} />
+            </label>
+          </div>
+        )}
+        {manageable && !tournamentClosed && (
+          <div className="mt-3">
+            <Button onClick={add} loading={busy} disabled={!key.trim() || !displayName.trim()}>新增組別</Button>
+          </div>
+        )}
+      </CardBody>
+    </Card>
   );
 }
 
@@ -558,12 +728,14 @@ function RegistrationsTab({
   manageable,
   tournamentName,
   userId,
+  categories,
   reload,
 }: {
   registrations: Registration[];
   manageable: boolean;
   tournamentName: string;
   userId: string;
+  categories: TournamentCategory[];
   reload: () => void;
 }) {
   const [q, setQ] = useState("");
@@ -585,14 +757,17 @@ function RegistrationsTab({
   };
 
   const groups = useMemo(() => {
+    const labelOf = (k: string) => categories.find((c) => c.key === k)?.displayName ?? k;
     const map = new Map<string, Registration[]>();
     for (const r of filtered) {
       const key = r.categoryKey?.trim() || "未分組";
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(r);
     }
-    return [...map.entries()].sort((a, b) => (a[0] === "未分組" ? -1 : b[0] === "未分組" ? 1 : a[0].localeCompare(b[0])));
-  }, [filtered]);
+    return [...map.entries()]
+      .sort((a, b) => (a[0] === "未分組" ? -1 : b[0] === "未分組" ? 1 : a[0].localeCompare(b[0])))
+      .map(([groupKey, list]) => ({ groupKey: labelOf(groupKey === "未分組" ? "" : groupKey) || "未分組", list }));
+  }, [filtered, categories]);
 
   return (
     <div className="mt-6 space-y-4">
@@ -614,7 +789,7 @@ function RegistrationsTab({
       {filtered.length === 0 ? (
         <EmptyState title="尚無符合的報名。" />
       ) : (
-        groups.map(([groupKey, list]) => (
+        groups.map(({ groupKey, list }) => (
           <div key={groupKey}>
             <h3 className="mb-2 text-sm font-semibold text-foreground">分組：{groupKey} <span className="font-normal text-muted-fg">（{list.length} 人）</span></h3>
             <ul className="space-y-2">
@@ -686,16 +861,18 @@ function RegistrationRow({
 function CheckinTab({
   registrations,
   checkins,
-  manageable,
+  operable,
   checkinOpen,
   userId,
+  categories,
   reload,
 }: {
   registrations: Registration[];
   checkins: Record<string, string>;
-  manageable: boolean;
+  operable: boolean;
   checkinOpen: boolean;
   userId: string;
+  categories: TournamentCategory[];
   reload: () => Promise<void>;
 }) {
   const [q, setQ] = useState("");
@@ -739,7 +916,7 @@ function CheckinTab({
           className="min-h-[44px] rounded-token-md border border-border bg-surface px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-brand"
         />
         <span className="text-sm text-muted-fg">已報到 {active.length - notCheckedIn.length}/{active.length}</span>
-        {manageable && notCheckedIn.length > 0 && (
+        {operable && notCheckedIn.length > 0 && (
           <div className="ml-auto">
             <Button size="sm" onClick={batchCheckIn} loading={batchBusy}>全部報到（{notCheckedIn.length}）</Button>
           </div>
@@ -752,14 +929,37 @@ function CheckinTab({
         <ul className="space-y-2">
           {filtered.map((r) => {
             const cs = checkins[r.id] ?? "not_checked_in";
+            const catLabel = categories.find((c) => c.key === r.categoryKey)?.displayName ?? r.categoryKey ?? "未分組";
             return (
               <li key={r.id} className="flex flex-col gap-2 rounded-token-lg border border-border bg-surface p-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium text-foreground">{r.userId}</span>
+                  <Badge tone="muted">{catLabel}</Badge>
                   <StatusBadge domain="checkin" value={cs} />
                 </div>
-                {manageable && (
-                  <div className="flex flex-wrap gap-2">
+                {operable && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {categories.length > 0 && (
+                      <select
+                        aria-label="變更組別"
+                        className="min-h-[44px] rounded-token-md border border-border bg-surface px-2 text-sm text-foreground"
+                        value={r.categoryKey ?? ""}
+                        onChange={async (e) => {
+                          const categoryKey = e.target.value;
+                          if (!categoryKey) return;
+                          await fetch(`/api/otc/registrations/${r.id}/events/change-category`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json", "x-user-id": userId },
+                            body: JSON.stringify({ categoryKey }),
+                          });
+                          await reload();
+                        }}
+                      >
+                        {categories.map((c) => (
+                          <option key={c.id} value={c.key}>{c.displayName}</option>
+                        ))}
+                      </select>
+                    )}
                     {cs !== "checked_in" && (
                       <Button size="sm" onClick={() => act(r.id, "check-in")}>報到</Button>
                     )}
@@ -782,7 +982,6 @@ function PairingTab({
   canPair,
   manageable,
   tournamentId,
-  gameKey,
   userId,
   reload,
   setActionError,
@@ -791,13 +990,13 @@ function PairingTab({
   canPair: boolean;
   manageable: boolean;
   tournamentId: string;
-  gameKey: string;
   userId: string;
   reload: () => void;
   setActionError: (s: string | null) => void;
 }) {
   const [roundNo, setRoundNo] = useState("1");
   const [busy, setBusy] = useState(false);
+  const [printRound, setPrintRound] = useState<number | null>(null);
   const generate = async () => {
     setBusy(true);
     setActionError(null);
@@ -821,11 +1020,34 @@ function PairingTab({
       if (!map.has(m.roundNo)) map.set(m.roundNo, []);
       map.get(m.roundNo)!.push(m);
     }
-    return [...map.entries()].sort((a, b) => a[0] - b[0]);
+    return [...map.entries()]
+      .map(([round, list]) => [round, [...list].sort((a, b) => (a.tableNo ?? 9999) - (b.tableNo ?? 9999) || a.id.localeCompare(b.id))] as [number, Match[]])
+      .sort((a, b) => a[0] - b[0]);
   }, [matches]);
+  const printList = printRound == null ? [] : byRound.find(([r]) => r === printRound)?.[1] ?? [];
 
   return (
     <div className="mt-6 space-y-5">
+      <style jsx global>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          .pairing-print-area,
+          .pairing-print-area * {
+            visibility: visible;
+          }
+          .pairing-print-area {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            background: white;
+          }
+          .print-hidden {
+            display: none !important;
+          }
+        }
+      `}</style>
       {manageable && canPair && (
         <Card>
           <CardBody className="flex flex-wrap items-end gap-3">
@@ -849,15 +1071,98 @@ function PairingTab({
       ) : (
         byRound.map(([r, list]) => (
           <div key={r}>
-            <h3 className="mb-2 text-sm font-semibold text-foreground">第 {r} 輪 <span className="font-normal text-muted-fg">（{list.length} 場）</span></h3>
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold text-foreground">第 {r} 輪 <span className="font-normal text-muted-fg">（{list.length} 場）</span></h3>
+              <Button variant="secondary" size="sm" onClick={() => setPrintRound(r)}>
+                列印預覽
+              </Button>
+            </div>
             <ul className="space-y-2">
               {list.map((m) => (
-                <MatchRow key={m.id} match={m} manageable={manageable} gameKey={gameKey} userId={userId} reload={reload} />
+                <MatchRow key={m.id} match={m} manageable={manageable} userId={userId} reload={reload} />
               ))}
             </ul>
           </div>
         ))
       )}
+      {printRound != null && (
+        <PairingPrintPreview
+          roundNo={printRound}
+          matches={printList}
+          onClose={() => setPrintRound(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function PairingPrintPreview({
+  roundNo,
+  matches,
+  onClose,
+}: {
+  roundNo: number;
+  matches: Match[];
+  onClose: () => void;
+}) {
+  const grouped = useMemo(() => {
+    const map = new Map<string, Match[]>();
+    for (const m of matches) {
+      const group = m.categoryKey?.trim() || "未分組";
+      if (!map.has(group)) map.set(group, []);
+      map.get(group)!.push(m);
+    }
+    return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  }, [matches]);
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/45 p-4 print:static print:bg-white">
+      <div className="mx-auto flex max-h-[92vh] max-w-5xl flex-col overflow-hidden rounded-token-xl bg-surface shadow-token-lg print:max-h-none print:max-w-none print:overflow-visible print:rounded-none print:shadow-none">
+        <div className="print-hidden flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
+          <div>
+            <h3 className="text-lg font-semibold text-foreground">第 {roundNo} 輪出賽單預覽</h3>
+            <p className="text-sm text-muted-fg">確認桌次與選手後可直接列印。</p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={onClose}>關閉</Button>
+            <Button onClick={() => window.print()}>列印</Button>
+          </div>
+        </div>
+        <div className="pairing-print-area overflow-auto bg-white p-6 text-zinc-950 print:overflow-visible">
+          <div className="mb-5 flex items-end justify-between border-b-2 border-zinc-900 pb-3">
+            <div>
+              <h1 className="text-2xl font-bold">第 {roundNo} 輪出賽單</h1>
+              <p className="mt-1 text-sm text-zinc-600">列印時間：{new Date().toLocaleString("zh-TW")}</p>
+            </div>
+            <p className="text-sm text-zinc-600">共 {matches.length} 場</p>
+          </div>
+          {grouped.map(([group, list]) => (
+            <section key={group} className="mb-6 break-inside-avoid">
+              <h2 className="mb-2 text-base font-bold">分組：{group}</h2>
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr>
+                    {["桌次", "A 方", "B 方", "先手", "結果簽名"].map((h) => (
+                      <th key={h} className="border border-zinc-800 bg-zinc-100 px-2 py-2 text-left">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {list.map((m) => (
+                    <tr key={m.id}>
+                      <td className="w-16 border border-zinc-800 px-2 py-3 font-semibold">{m.tableNo ?? "—"}</td>
+                      <td className="border border-zinc-800 px-2 py-3">{m.playerAId}</td>
+                      <td className="border border-zinc-800 px-2 py-3">{m.playerBId}</td>
+                      <td className="w-20 border border-zinc-800 px-2 py-3">{m.firstMove ?? "—"}</td>
+                      <td className="w-40 border border-zinc-800 px-2 py-3"></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -865,23 +1170,23 @@ function PairingTab({
 function MatchRow({
   match,
   manageable,
-  gameKey,
   userId,
   reload,
 }: {
   match: Match;
   manageable: boolean;
-  gameKey: string;
   userId: string;
   reload: () => void;
 }) {
   const [busy, setBusy] = useState(false);
-  const [kind, setKind] = useState<"win" | "draw" | "void">("win");
-  const [winner, setWinner] = useState<"A" | "B">("A");
-  const submit = async () => {
+  const submit = async (kind: "winA" | "winB" | "draw" | "void") => {
     setBusy(true);
     try {
-      const result = kind === "win" ? { kind: "win", winner } : kind === "draw" ? { kind: "draw" } : { kind: "void" };
+      const result =
+        kind === "winA" ? { kind: "win", winner: "A" }
+          : kind === "winB" ? { kind: "win", winner: "B" }
+            : kind === "draw" ? { kind: "draw" }
+              : { kind: "void" };
       const res = await fetch(`/api/otc/matches/${match.id}/result`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-user-id": userId },
@@ -899,83 +1204,190 @@ function MatchRow({
   const finished = match.status === "finished";
   const resultText = finished && match.result
     ? match.result.kind === "win"
-      ? `${match.result.winner} 勝`
+      ? `${match.result.winner === "A" ? "A 方" : "B 方"}勝`
       : match.result.kind === "draw"
         ? "和局"
         : "作廢"
     : null;
+  const aWon = match.result?.kind === "win" && match.result.winner === "A";
+  const bWon = match.result?.kind === "win" && match.result.winner === "B";
   return (
-    <li className="flex flex-col gap-2 rounded-token-lg border border-border bg-surface p-3 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <p className="text-xs text-muted-fg">
-          第 {match.roundNo} 輪{match.tableNo != null && ` · 桌 ${match.tableNo}`}
-        </p>
-        <p className="mt-1 font-medium text-foreground">{match.playerAId} vs {match.playerBId}</p>
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        {finished ? (
-          <StatusBadge domain="match" value={match.status} />
-        ) : (
-          <Badge tone="neutral">{statusMeta("match", match.status).label}</Badge>
-        )}
-        {resultText && <Badge tone={match.result?.kind === "void" ? "muted" : "info"}>{resultText}</Badge>}
-        {manageable && !finished && (
-          <>
-            <select value={kind} onChange={(e) => setKind(e.target.value as "win" | "draw" | "void")} aria-label="結果類型" className="min-h-[44px] rounded-token-md border border-border bg-surface px-2 text-foreground">
-              <option value="win">勝負</option>
-              <option value="draw">和局</option>
-              <option value="void">作廢</option>
-            </select>
-            {kind === "win" && (
-              <select value={winner} onChange={(e) => setWinner(e.target.value as "A" | "B")} aria-label="勝方" className="min-h-[44px] rounded-token-md border border-border bg-surface px-2 text-foreground">
-                <option value="A">A 勝</option>
-                <option value="B">B 勝</option>
-              </select>
-            )}
-            <Button size="sm" onClick={submit} loading={busy}>上傳</Button>
-          </>
-        )}
+    <li className="rounded-token-lg border border-border bg-surface p-3">
+      <div className="grid gap-3 lg:grid-cols-[96px_1fr_auto] lg:items-center">
+        <div className="flex items-center gap-2 lg:block">
+          <p className="text-xs text-muted-fg">桌次</p>
+          <p className="text-lg font-bold text-foreground">{match.tableNo ?? "—"}</p>
+          {match.categoryKey && <Badge tone="muted">{match.categoryKey}</Badge>}
+        </div>
+        <div className="grid gap-2 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
+          <PlayerCell label="A" playerId={match.playerAId} first={match.firstMove === "A"} won={aWon} />
+          <span className="text-center text-xs text-muted-fg">vs</span>
+          <PlayerCell label="B" playerId={match.playerBId} first={match.firstMove === "B"} won={bWon} />
+        </div>
+        <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+          {resultText ? <Badge tone={match.result?.kind === "void" ? "muted" : "info"}>{resultText}</Badge> : <Badge tone="warning">{statusMeta("match", match.status).label}</Badge>}
+          {manageable && (
+            <>
+              <Button size="sm" variant={aWon ? "primary" : "secondary"} onClick={() => submit("winA")} loading={busy} disabled={busy}>A勝</Button>
+              <Button size="sm" variant={bWon ? "primary" : "secondary"} onClick={() => submit("winB")} loading={busy} disabled={busy}>B勝</Button>
+              <Button size="sm" variant={match.result?.kind === "draw" ? "primary" : "secondary"} onClick={() => submit("draw")} disabled={busy}>和</Button>
+              <Button size="sm" variant="ghost" onClick={() => submit("void")} disabled={busy}>作廢</Button>
+            </>
+          )}
+        </div>
       </div>
     </li>
   );
 }
 
-function StandingsTab({ standings, reload }: { standings: StandingsRow[]; reload: () => void }) {
+function PlayerCell({
+  label,
+  playerId,
+  first,
+  won,
+}: {
+  label: "A" | "B";
+  playerId: string;
+  first: boolean;
+  won: boolean;
+}) {
+  return (
+    <div className={cn(
+      "flex min-h-[48px] items-center justify-between gap-3 rounded-token-md border px-3",
+      won ? "border-[var(--tone-success-border)] bg-[var(--tone-success-bg)]" : "border-border bg-background"
+    )}>
+      <div className="min-w-0">
+        <p className="text-[11px] font-semibold text-muted-fg">{label} 方{first ? " · 先手" : ""}</p>
+        <p className="truncate font-medium text-foreground">{playerId}</p>
+      </div>
+      {won && <Badge tone="success">勝</Badge>}
+    </div>
+  );
+}
+
+function StandingsTab({
+  standings,
+  categories,
+  reload,
+  tournamentId,
+  status,
+  manageable,
+  userId,
+}: {
+  standings: StandingsRow[];
+  categories: TournamentCategory[];
+  reload: () => void;
+  tournamentId: string;
+  status: string;
+  manageable: boolean;
+  userId: string;
+}) {
+  const [ratingBusy, setRatingBusy] = useState(false);
+  const [ratingMsg, setRatingMsg] = useState<string | null>(null);
+  const [confirmRating, setConfirmRating] = useState(false);
+  // 賽事已結束時最適合計算等級分（結果已定案）
+  const canRate = manageable && (status === "in_progress" || status === "closed");
+
+  const calcRatings = async () => {
+    setRatingBusy(true);
+    setRatingMsg(null);
+    try {
+      const res = await fetch(`/api/otc/tournaments/${tournamentId}/calculate-ratings`, {
+        method: "POST",
+        headers: { "x-user-id": userId },
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok) {
+        setRatingMsg(`已計算：${data?.matchesProcessed ?? 0} 場、${data?.playersAffected ?? 0} 位棋手更新等級分。`);
+        setConfirmRating(false);
+      } else if (data?.code === "ALREADY_RATED") {
+        setRatingMsg("此賽事已計算過等級分（不重複計算）。");
+        setConfirmRating(false);
+      } else {
+        setRatingMsg(data?.message ?? data?.code ?? "計算失敗");
+      }
+    } catch (e) {
+      setRatingMsg(e instanceof Error ? e.message : "網路錯誤");
+    } finally {
+      setRatingBusy(false);
+    }
+  };
+
+  const grouped = useMemo(() => {
+    const labelOf = (k: string | null | undefined) =>
+      categories.find((c) => c.key === k)?.displayName ?? (k?.trim() || "未分組");
+    const map = new Map<string, StandingsRow[]>();
+    for (const row of standings) {
+      const g = labelOf(row.categoryKey);
+      if (!map.has(g)) map.set(g, []);
+      map.get(g)!.push(row);
+    }
+    return [...map.entries()];
+  }, [standings, categories]);
+
   return (
     <div className="mt-6">
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <span className="text-sm text-muted-fg">即時排名預覽</span>
-        <Button variant="secondary" size="sm" onClick={reload}>重新整理</Button>
+        <div className="flex items-center gap-2">
+          {canRate && (
+            <Button variant="secondary" size="sm" onClick={() => setConfirmRating(true)} loading={ratingBusy}>
+              計算等級分
+            </Button>
+          )}
+          <Button variant="secondary" size="sm" onClick={reload}>重新整理</Button>
+        </div>
       </div>
+      {ratingMsg && (
+        <div className="mb-3 rounded-token-md border border-border bg-surface-muted px-3 py-2 text-sm text-foreground">
+          {ratingMsg}
+        </div>
+      )}
+      <ConfirmDialog
+        open={confirmRating}
+        title="計算等級分"
+        description={<span>將依本賽事已完成對局，更新各棋手的 ELO 等級分。<span className="mt-2 block text-xs">MVP：每場賽事僅能計算一次，計算後不可重算。</span></span>}
+        confirmLabel="開始計算"
+        loading={ratingBusy}
+        onConfirm={calcRatings}
+        onCancel={() => { if (!ratingBusy) setConfirmRating(false); }}
+      />
       {standings.length === 0 ? (
         <EmptyState title="尚無排名資料。" description="需有已結束的對局後才會產生名次。" />
       ) : (
-        <Card>
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left text-xs text-muted-fg">
-                  <th className="px-4 py-2">名次</th>
-                  <th className="px-4 py-2">選手</th>
-                  <th className="px-4 py-2 text-right">場</th>
-                  <th className="px-4 py-2 text-right">勝/和/負</th>
-                  <th className="px-4 py-2 text-right">積分</th>
-                </tr>
-              </thead>
-              <tbody>
-                {standings.map((row, i) => (
-                  <tr key={row.playerId} className="border-b border-border last:border-0">
-                    <td className="px-4 py-2 text-muted-fg">{i + 1}</td>
-                    <td className="px-4 py-2 font-medium text-foreground">{row.playerId}</td>
-                    <td className="px-4 py-2 text-right text-muted-fg">{row.played}</td>
-                    <td className="px-4 py-2 text-right text-muted-fg">{row.wins}/{row.draws}/{row.losses}</td>
-                    <td className="px-4 py-2 text-right font-semibold text-foreground">{row.points}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+        <div className="space-y-6">
+          {grouped.map(([groupLabel, rows]) => (
+            <Card key={groupLabel}>
+              <div className="border-b border-border px-4 py-2 text-sm font-semibold text-foreground">
+                分組：{groupLabel}
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-left text-xs text-muted-fg">
+                      <th className="px-4 py-2">名次</th>
+                      <th className="px-4 py-2">選手</th>
+                      <th className="px-4 py-2 text-right">場</th>
+                      <th className="px-4 py-2 text-right">勝/和/負</th>
+                      <th className="px-4 py-2 text-right">積分</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((row, i) => (
+                      <tr key={row.playerId} className="border-b border-border last:border-0">
+                        <td className="px-4 py-2 text-muted-fg">{i + 1}</td>
+                        <td className="px-4 py-2 font-medium text-foreground">{row.playerId}</td>
+                        <td className="px-4 py-2 text-right text-muted-fg">{row.played}</td>
+                        <td className="px-4 py-2 text-right text-muted-fg">{row.wins}/{row.draws}/{row.losses}</td>
+                        <td className="px-4 py-2 text-right font-semibold text-foreground">{row.points}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          ))}
+        </div>
       )}
     </div>
   );

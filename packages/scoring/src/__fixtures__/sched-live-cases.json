@@ -1,0 +1,2739 @@
+{
+    "captured_at": "2026-08-24T04:25:48+00:00",
+    "cases": [
+        {
+            "label": "T52-R5",
+            "source_tournament_id": 52,
+            "target_round": 5,
+            "tournament": {
+                "game_type": "圍棋",
+                "num_players": 18,
+                "num_rounds": 5,
+                "win_point": 2,
+                "dan_diff": 0,
+                "same_country_no_pair": false
+            },
+            "players": [
+                {
+                    "draw_no": 1,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 2,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 3,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 4,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 5,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 6,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 7,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 8,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 9,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 10,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 11,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 12,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 13,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 14,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 15,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 16,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 17,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 18,
+                    "country": "",
+                    "withdrawn": false
+                }
+            ],
+            "history": [
+                {
+                    "round": 1,
+                    "a": 1,
+                    "b": 2,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 1,
+                    "a": 3,
+                    "b": 4,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 1,
+                    "a": 5,
+                    "b": 6,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 1,
+                    "a": 7,
+                    "b": 8,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 1,
+                    "a": 9,
+                    "b": 10,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 1,
+                    "a": 11,
+                    "b": 12,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 1,
+                    "a": 13,
+                    "b": 14,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 1,
+                    "a": 15,
+                    "b": 16,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 1,
+                    "a": 17,
+                    "b": 18,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 2,
+                    "a": 2,
+                    "b": 4,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 2,
+                    "a": 5,
+                    "b": 8,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 2,
+                    "a": 9,
+                    "b": 11,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 2,
+                    "a": 14,
+                    "b": 16,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 2,
+                    "a": 17,
+                    "b": 1,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 2,
+                    "a": 3,
+                    "b": 6,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 2,
+                    "a": 7,
+                    "b": 10,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 2,
+                    "a": 12,
+                    "b": 13,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 2,
+                    "a": 15,
+                    "b": 18,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 3,
+                    "a": 4,
+                    "b": 9,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 3,
+                    "a": 14,
+                    "b": 5,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 3,
+                    "a": 17,
+                    "b": 2,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 3,
+                    "a": 16,
+                    "b": 3,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 3,
+                    "a": 8,
+                    "b": 10,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 3,
+                    "a": 11,
+                    "b": 13,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 3,
+                    "a": 15,
+                    "b": 1,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 3,
+                    "a": 6,
+                    "b": 7,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 3,
+                    "a": 12,
+                    "b": 18,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 4,
+                    "a": 14,
+                    "b": 9,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 4,
+                    "a": 4,
+                    "b": 5,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 4,
+                    "a": 2,
+                    "b": 3,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 4,
+                    "a": 13,
+                    "b": 1,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 4,
+                    "a": 8,
+                    "b": 17,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 4,
+                    "a": 16,
+                    "b": 10,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 4,
+                    "a": 11,
+                    "b": 15,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 4,
+                    "a": 6,
+                    "b": 18,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 4,
+                    "a": 7,
+                    "b": 12,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                }
+            ],
+            "expected_sorted": [
+                {
+                    "draw": 9,
+                    "score": "8.0000",
+                    "tb1": "14.0000",
+                    "turn": 0,
+                    "group": 1
+                },
+                {
+                    "draw": 8,
+                    "score": "6.0000",
+                    "tb1": "10.0000",
+                    "turn": -1,
+                    "group": 1
+                },
+                {
+                    "draw": 14,
+                    "score": "6.0000",
+                    "tb1": "22.0000",
+                    "turn": 0,
+                    "group": 2
+                },
+                {
+                    "draw": 5,
+                    "score": "6.0000",
+                    "tb1": "20.0000",
+                    "turn": 0,
+                    "group": 2
+                },
+                {
+                    "draw": 3,
+                    "score": "6.0000",
+                    "tb1": "16.0000",
+                    "turn": 0,
+                    "group": 2
+                },
+                {
+                    "draw": 1,
+                    "score": "6.0000",
+                    "tb1": "14.0000",
+                    "turn": 1,
+                    "group": 2
+                },
+                {
+                    "draw": 4,
+                    "score": "4.0000",
+                    "tb1": "24.0000",
+                    "turn": 0,
+                    "group": 3
+                },
+                {
+                    "draw": 2,
+                    "score": "4.0000",
+                    "tb1": "18.0000",
+                    "turn": 0,
+                    "group": 3
+                },
+                {
+                    "draw": 16,
+                    "score": "4.0000",
+                    "tb1": "18.0000",
+                    "turn": 0,
+                    "group": 3
+                },
+                {
+                    "draw": 13,
+                    "score": "4.0000",
+                    "tb1": "16.0000",
+                    "turn": 0,
+                    "group": 3
+                },
+                {
+                    "draw": 6,
+                    "score": "4.0000",
+                    "tb1": "14.0000",
+                    "turn": 0,
+                    "group": 3
+                },
+                {
+                    "draw": 15,
+                    "score": "4.0000",
+                    "tb1": "14.0000",
+                    "turn": 0,
+                    "group": 3
+                },
+                {
+                    "draw": 10,
+                    "score": "2.0000",
+                    "tb1": "18.0000",
+                    "turn": 0,
+                    "group": 4
+                },
+                {
+                    "draw": 11,
+                    "score": "2.0000",
+                    "tb1": "18.0000",
+                    "turn": 0,
+                    "group": 4
+                },
+                {
+                    "draw": 17,
+                    "score": "2.0000",
+                    "tb1": "18.0000",
+                    "turn": 0,
+                    "group": 4
+                },
+                {
+                    "draw": 18,
+                    "score": "2.0000",
+                    "tb1": "12.0000",
+                    "turn": 0,
+                    "group": 4
+                },
+                {
+                    "draw": 12,
+                    "score": "2.0000",
+                    "tb1": "8.0000",
+                    "turn": 0,
+                    "group": 4
+                },
+                {
+                    "draw": 7,
+                    "score": "0.0000",
+                    "tb1": "14.0000",
+                    "turn": 0,
+                    "group": 4
+                }
+            ],
+            "expected_pairs": [
+                {
+                    "a": 9,
+                    "b": 8,
+                    "first": "A",
+                    "sente": 9,
+                    "gote": 8
+                },
+                {
+                    "a": 14,
+                    "b": 3,
+                    "first": "B",
+                    "sente": 3,
+                    "gote": 14
+                },
+                {
+                    "a": 5,
+                    "b": 1,
+                    "first": "B",
+                    "sente": 1,
+                    "gote": 5
+                },
+                {
+                    "a": 4,
+                    "b": 16,
+                    "first": "A",
+                    "sente": 4,
+                    "gote": 16
+                },
+                {
+                    "a": 2,
+                    "b": 13,
+                    "first": "A",
+                    "sente": 2,
+                    "gote": 13
+                },
+                {
+                    "a": 6,
+                    "b": 15,
+                    "first": "A",
+                    "sente": 6,
+                    "gote": 15
+                },
+                {
+                    "a": 10,
+                    "b": 11,
+                    "first": "A",
+                    "sente": 10,
+                    "gote": 11
+                },
+                {
+                    "a": 17,
+                    "b": 12,
+                    "first": "B",
+                    "sente": 12,
+                    "gote": 17
+                },
+                {
+                    "a": 18,
+                    "b": 7,
+                    "first": "B",
+                    "sente": 7,
+                    "gote": 18
+                }
+            ]
+        },
+        {
+            "label": "T52-R4",
+            "source_tournament_id": 52,
+            "target_round": 4,
+            "tournament": {
+                "game_type": "圍棋",
+                "num_players": 18,
+                "num_rounds": 5,
+                "win_point": 2,
+                "dan_diff": 0,
+                "same_country_no_pair": false
+            },
+            "players": [
+                {
+                    "draw_no": 1,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 2,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 3,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 4,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 5,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 6,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 7,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 8,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 9,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 10,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 11,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 12,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 13,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 14,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 15,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 16,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 17,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 18,
+                    "country": "",
+                    "withdrawn": false
+                }
+            ],
+            "history": [
+                {
+                    "round": 1,
+                    "a": 1,
+                    "b": 2,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 1,
+                    "a": 3,
+                    "b": 4,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 1,
+                    "a": 5,
+                    "b": 6,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 1,
+                    "a": 7,
+                    "b": 8,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 1,
+                    "a": 9,
+                    "b": 10,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 1,
+                    "a": 11,
+                    "b": 12,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 1,
+                    "a": 13,
+                    "b": 14,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 1,
+                    "a": 15,
+                    "b": 16,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 1,
+                    "a": 17,
+                    "b": 18,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 2,
+                    "a": 2,
+                    "b": 4,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 2,
+                    "a": 5,
+                    "b": 8,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 2,
+                    "a": 9,
+                    "b": 11,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 2,
+                    "a": 14,
+                    "b": 16,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 2,
+                    "a": 17,
+                    "b": 1,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 2,
+                    "a": 3,
+                    "b": 6,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 2,
+                    "a": 7,
+                    "b": 10,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 2,
+                    "a": 12,
+                    "b": 13,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 2,
+                    "a": 15,
+                    "b": 18,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 3,
+                    "a": 4,
+                    "b": 9,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 3,
+                    "a": 14,
+                    "b": 5,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 3,
+                    "a": 17,
+                    "b": 2,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 3,
+                    "a": 16,
+                    "b": 3,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 3,
+                    "a": 8,
+                    "b": 10,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 3,
+                    "a": 11,
+                    "b": 13,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 3,
+                    "a": 15,
+                    "b": 1,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 3,
+                    "a": 6,
+                    "b": 7,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 3,
+                    "a": 12,
+                    "b": 18,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                }
+            ],
+            "expected_sorted": [
+                {
+                    "draw": 14,
+                    "score": "6.0000",
+                    "tb1": "10.0000",
+                    "turn": 0,
+                    "group": 1
+                },
+                {
+                    "draw": 9,
+                    "score": "6.0000",
+                    "tb1": "8.0000",
+                    "turn": 0,
+                    "group": 1
+                },
+                {
+                    "draw": 4,
+                    "score": "4.0000",
+                    "tb1": "14.0000",
+                    "turn": 0,
+                    "group": 2
+                },
+                {
+                    "draw": 5,
+                    "score": "4.0000",
+                    "tb1": "12.0000",
+                    "turn": 0,
+                    "group": 2
+                },
+                {
+                    "draw": 2,
+                    "score": "4.0000",
+                    "tb1": "10.0000",
+                    "turn": 0,
+                    "group": 2
+                },
+                {
+                    "draw": 3,
+                    "score": "4.0000",
+                    "tb1": "8.0000",
+                    "turn": 0,
+                    "group": 2
+                },
+                {
+                    "draw": 13,
+                    "score": "4.0000",
+                    "tb1": "8.0000",
+                    "turn": 0,
+                    "group": 2
+                },
+                {
+                    "draw": 8,
+                    "score": "4.0000",
+                    "tb1": "6.0000",
+                    "turn": 0,
+                    "group": 2
+                },
+                {
+                    "draw": 1,
+                    "score": "4.0000",
+                    "tb1": "8.0000",
+                    "turn": 1,
+                    "group": 2
+                },
+                {
+                    "draw": 17,
+                    "score": "2.0000",
+                    "tb1": "10.0000",
+                    "turn": -1,
+                    "group": 2
+                },
+                {
+                    "draw": 16,
+                    "score": "2.0000",
+                    "tb1": "12.0000",
+                    "turn": 0,
+                    "group": 3
+                },
+                {
+                    "draw": 10,
+                    "score": "2.0000",
+                    "tb1": "10.0000",
+                    "turn": 0,
+                    "group": 3
+                },
+                {
+                    "draw": 11,
+                    "score": "2.0000",
+                    "tb1": "10.0000",
+                    "turn": 0,
+                    "group": 3
+                },
+                {
+                    "draw": 6,
+                    "score": "2.0000",
+                    "tb1": "8.0000",
+                    "turn": 0,
+                    "group": 3
+                },
+                {
+                    "draw": 15,
+                    "score": "2.0000",
+                    "tb1": "8.0000",
+                    "turn": 0,
+                    "group": 3
+                },
+                {
+                    "draw": 18,
+                    "score": "2.0000",
+                    "tb1": "4.0000",
+                    "turn": 0,
+                    "group": 3
+                },
+                {
+                    "draw": 7,
+                    "score": "0.0000",
+                    "tb1": "8.0000",
+                    "turn": 0,
+                    "group": 4
+                },
+                {
+                    "draw": 12,
+                    "score": "0.0000",
+                    "tb1": "8.0000",
+                    "turn": 0,
+                    "group": 4
+                }
+            ],
+            "expected_pairs": [
+                {
+                    "a": 14,
+                    "b": 9,
+                    "first": "A",
+                    "sente": 14,
+                    "gote": 9
+                },
+                {
+                    "a": 4,
+                    "b": 5,
+                    "first": "B",
+                    "sente": 5,
+                    "gote": 4
+                },
+                {
+                    "a": 2,
+                    "b": 3,
+                    "first": "A",
+                    "sente": 2,
+                    "gote": 3
+                },
+                {
+                    "a": 13,
+                    "b": 1,
+                    "first": "A",
+                    "sente": 13,
+                    "gote": 1
+                },
+                {
+                    "a": 8,
+                    "b": 17,
+                    "first": "B",
+                    "sente": 17,
+                    "gote": 8
+                },
+                {
+                    "a": 16,
+                    "b": 10,
+                    "first": "A",
+                    "sente": 16,
+                    "gote": 10
+                },
+                {
+                    "a": 11,
+                    "b": 15,
+                    "first": "B",
+                    "sente": 15,
+                    "gote": 11
+                },
+                {
+                    "a": 6,
+                    "b": 18,
+                    "first": "B",
+                    "sente": 18,
+                    "gote": 6
+                },
+                {
+                    "a": 7,
+                    "b": 12,
+                    "first": "A",
+                    "sente": 7,
+                    "gote": 12
+                }
+            ]
+        },
+        {
+            "label": "T49-R5",
+            "source_tournament_id": 49,
+            "target_round": 5,
+            "tournament": {
+                "game_type": "象棋",
+                "num_players": 10,
+                "num_rounds": 5,
+                "win_point": 2,
+                "dan_diff": 0,
+                "same_country_no_pair": false
+            },
+            "players": [
+                {
+                    "draw_no": 1,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 2,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 3,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 4,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 5,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 6,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 7,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 8,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 9,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 10,
+                    "country": "",
+                    "withdrawn": false
+                }
+            ],
+            "history": [
+                {
+                    "round": 1,
+                    "a": 1,
+                    "b": 2,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 1,
+                    "a": 3,
+                    "b": 4,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 1,
+                    "a": 5,
+                    "b": 6,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 1,
+                    "score_b": 1
+                },
+                {
+                    "round": 1,
+                    "a": 7,
+                    "b": 8,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 1,
+                    "a": 9,
+                    "b": 10,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 2,
+                    "a": 2,
+                    "b": 3,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 2,
+                    "a": 7,
+                    "b": 9,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 1,
+                    "score_b": 1
+                },
+                {
+                    "round": 2,
+                    "a": 5,
+                    "b": 1,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 2,
+                    "a": 6,
+                    "b": 4,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 2,
+                    "a": 8,
+                    "b": 10,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 3,
+                    "a": 3,
+                    "b": 5,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 1,
+                    "score_b": 1
+                },
+                {
+                    "round": 3,
+                    "a": 7,
+                    "b": 2,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 3,
+                    "a": 9,
+                    "b": 8,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 3,
+                    "a": 4,
+                    "b": 10,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 3,
+                    "a": 6,
+                    "b": 1,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 4,
+                    "a": 3,
+                    "b": 7,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 4,
+                    "a": 4,
+                    "b": 5,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 4,
+                    "a": 8,
+                    "b": 6,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 4,
+                    "a": 9,
+                    "b": 2,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 4,
+                    "a": 10,
+                    "b": 1,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                }
+            ],
+            "expected_sorted": [
+                {
+                    "draw": 3,
+                    "score": "7.0000",
+                    "tb1": "19.0000",
+                    "turn": -1,
+                    "group": 1
+                },
+                {
+                    "draw": 4,
+                    "score": "6.0000",
+                    "tb1": "16.0000",
+                    "turn": 0,
+                    "group": 1
+                },
+                {
+                    "draw": 7,
+                    "score": "5.0000",
+                    "tb1": "18.0000",
+                    "turn": -1,
+                    "group": 2
+                },
+                {
+                    "draw": 6,
+                    "score": "5.0000",
+                    "tb1": "16.0000",
+                    "turn": -1,
+                    "group": 2
+                },
+                {
+                    "draw": 5,
+                    "score": "4.0000",
+                    "tb1": "20.0000",
+                    "turn": 0,
+                    "group": 3
+                },
+                {
+                    "draw": 8,
+                    "score": "4.0000",
+                    "tb1": "13.0000",
+                    "turn": 0,
+                    "group": 3
+                },
+                {
+                    "draw": 2,
+                    "score": "4.0000",
+                    "tb1": "17.0000",
+                    "turn": 2,
+                    "group": 3
+                },
+                {
+                    "draw": 9,
+                    "score": "3.0000",
+                    "tb1": "13.0000",
+                    "turn": -2,
+                    "group": 3
+                },
+                {
+                    "draw": 1,
+                    "score": "2.0000",
+                    "tb1": "13.0000",
+                    "turn": 2,
+                    "group": 4
+                },
+                {
+                    "draw": 10,
+                    "score": "0.0000",
+                    "tb1": "15.0000",
+                    "turn": 1,
+                    "group": 4
+                }
+            ],
+            "expected_pairs": [
+                {
+                    "a": 3,
+                    "b": 6,
+                    "first": "B",
+                    "sente": 6,
+                    "gote": 3
+                },
+                {
+                    "a": 4,
+                    "b": 7,
+                    "first": "A",
+                    "sente": 4,
+                    "gote": 7
+                },
+                {
+                    "a": 5,
+                    "b": 8,
+                    "first": "A",
+                    "sente": 5,
+                    "gote": 8
+                },
+                {
+                    "a": 2,
+                    "b": 10,
+                    "first": "A",
+                    "sente": 2,
+                    "gote": 10
+                },
+                {
+                    "a": 9,
+                    "b": 1,
+                    "first": "B",
+                    "sente": 1,
+                    "gote": 9
+                }
+            ]
+        },
+        {
+            "label": "T49-R4",
+            "source_tournament_id": 49,
+            "target_round": 4,
+            "tournament": {
+                "game_type": "象棋",
+                "num_players": 10,
+                "num_rounds": 5,
+                "win_point": 2,
+                "dan_diff": 0,
+                "same_country_no_pair": false
+            },
+            "players": [
+                {
+                    "draw_no": 1,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 2,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 3,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 4,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 5,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 6,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 7,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 8,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 9,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 10,
+                    "country": "",
+                    "withdrawn": false
+                }
+            ],
+            "history": [
+                {
+                    "round": 1,
+                    "a": 1,
+                    "b": 2,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 1,
+                    "a": 3,
+                    "b": 4,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 1,
+                    "a": 5,
+                    "b": 6,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 1,
+                    "score_b": 1
+                },
+                {
+                    "round": 1,
+                    "a": 7,
+                    "b": 8,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 1,
+                    "a": 9,
+                    "b": 10,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 2,
+                    "a": 2,
+                    "b": 3,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 2,
+                    "a": 7,
+                    "b": 9,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 1,
+                    "score_b": 1
+                },
+                {
+                    "round": 2,
+                    "a": 5,
+                    "b": 1,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 2,
+                    "a": 6,
+                    "b": 4,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 2,
+                    "a": 8,
+                    "b": 10,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 3,
+                    "a": 3,
+                    "b": 5,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 1,
+                    "score_b": 1
+                },
+                {
+                    "round": 3,
+                    "a": 7,
+                    "b": 2,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 3,
+                    "a": 9,
+                    "b": 8,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 3,
+                    "a": 4,
+                    "b": 10,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 3,
+                    "a": 6,
+                    "b": 1,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                }
+            ],
+            "expected_sorted": [
+                {
+                    "draw": 3,
+                    "score": "5.0000",
+                    "tb1": "10.0000",
+                    "turn": -1,
+                    "group": 1
+                },
+                {
+                    "draw": 7,
+                    "score": "5.0000",
+                    "tb1": "9.0000",
+                    "turn": -1,
+                    "group": 1
+                },
+                {
+                    "draw": 4,
+                    "score": "4.0000",
+                    "tb1": "8.0000",
+                    "turn": 0,
+                    "group": 2
+                },
+                {
+                    "draw": 5,
+                    "score": "4.0000",
+                    "tb1": "8.0000",
+                    "turn": 0,
+                    "group": 2
+                },
+                {
+                    "draw": 8,
+                    "score": "4.0000",
+                    "tb1": "8.0000",
+                    "turn": 1,
+                    "group": 2
+                },
+                {
+                    "draw": 6,
+                    "score": "3.0000",
+                    "tb1": "8.0000",
+                    "turn": -2,
+                    "group": 2
+                },
+                {
+                    "draw": 9,
+                    "score": "3.0000",
+                    "tb1": "9.0000",
+                    "turn": -1,
+                    "group": 3
+                },
+                {
+                    "draw": 2,
+                    "score": "2.0000",
+                    "tb1": "10.0000",
+                    "turn": 1,
+                    "group": 3
+                },
+                {
+                    "draw": 10,
+                    "score": "0.0000",
+                    "tb1": "11.0000",
+                    "turn": 1,
+                    "group": 4
+                },
+                {
+                    "draw": 1,
+                    "score": "0.0000",
+                    "tb1": "9.0000",
+                    "turn": 2,
+                    "group": 4
+                }
+            ],
+            "expected_pairs": [
+                {
+                    "a": 3,
+                    "b": 7,
+                    "first": "B",
+                    "sente": 7,
+                    "gote": 3
+                },
+                {
+                    "a": 4,
+                    "b": 5,
+                    "first": "A",
+                    "sente": 4,
+                    "gote": 5
+                },
+                {
+                    "a": 8,
+                    "b": 6,
+                    "first": "A",
+                    "sente": 8,
+                    "gote": 6
+                },
+                {
+                    "a": 9,
+                    "b": 2,
+                    "first": "A",
+                    "sente": 9,
+                    "gote": 2
+                },
+                {
+                    "a": 10,
+                    "b": 1,
+                    "first": "A",
+                    "sente": 10,
+                    "gote": 1
+                }
+            ]
+        },
+        {
+            "label": "T42-R6",
+            "source_tournament_id": 42,
+            "target_round": 6,
+            "tournament": {
+                "game_type": "象棋",
+                "num_players": 12,
+                "num_rounds": 6,
+                "win_point": 2,
+                "dan_diff": 0,
+                "same_country_no_pair": false
+            },
+            "players": [
+                {
+                    "draw_no": 1,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 2,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 3,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 4,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 5,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 6,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 7,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 8,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 9,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 10,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 11,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 12,
+                    "country": "",
+                    "withdrawn": false
+                }
+            ],
+            "history": [
+                {
+                    "round": 1,
+                    "a": 1,
+                    "b": 2,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 1,
+                    "a": 3,
+                    "b": 4,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 1,
+                    "a": 5,
+                    "b": 6,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 1,
+                    "a": 7,
+                    "b": 8,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 1,
+                    "a": 9,
+                    "b": 10,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 1,
+                    "a": 11,
+                    "b": 12,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 2,
+                    "a": 2,
+                    "b": 3,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 2,
+                    "a": 6,
+                    "b": 7,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 2,
+                    "a": 9,
+                    "b": 11,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 2,
+                    "a": 1,
+                    "b": 4,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 2,
+                    "a": 5,
+                    "b": 8,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 2,
+                    "a": 10,
+                    "b": 12,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 3,
+                    "a": 7,
+                    "b": 3,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 3,
+                    "a": 9,
+                    "b": 2,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 3,
+                    "a": 6,
+                    "b": 8,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 3,
+                    "a": 10,
+                    "b": 1,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 3,
+                    "a": 11,
+                    "b": 4,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 3,
+                    "a": 5,
+                    "b": 12,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 4,
+                    "a": 9,
+                    "b": 3,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 4,
+                    "a": 11,
+                    "b": 7,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 4,
+                    "a": 8,
+                    "b": 10,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 4,
+                    "a": 6,
+                    "b": 1,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 4,
+                    "a": 5,
+                    "b": 2,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 4,
+                    "a": 12,
+                    "b": 4,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 5,
+                    "a": 3,
+                    "b": 10,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 5,
+                    "a": 9,
+                    "b": 7,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 5,
+                    "a": 11,
+                    "b": 1,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 5,
+                    "a": 8,
+                    "b": 2,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 5,
+                    "a": 6,
+                    "b": 12,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 5,
+                    "a": 5,
+                    "b": 4,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                }
+            ],
+            "expected_sorted": [
+                {
+                    "draw": 3,
+                    "score": "10.0000",
+                    "tb1": "24.0000",
+                    "turn": -1,
+                    "group": 1
+                },
+                {
+                    "draw": 9,
+                    "score": "8.0000",
+                    "tb1": "30.0000",
+                    "turn": -1,
+                    "group": 1
+                },
+                {
+                    "draw": 7,
+                    "score": "6.0000",
+                    "tb1": "30.0000",
+                    "turn": 0,
+                    "group": 2
+                },
+                {
+                    "draw": 8,
+                    "score": "6.0000",
+                    "tb1": "22.0000",
+                    "turn": 0,
+                    "group": 2
+                },
+                {
+                    "draw": 1,
+                    "score": "6.0000",
+                    "tb1": "16.0000",
+                    "turn": 0,
+                    "group": 2
+                },
+                {
+                    "draw": 10,
+                    "score": "6.0000",
+                    "tb1": "34.0000",
+                    "turn": 1,
+                    "group": 2
+                },
+                {
+                    "draw": 11,
+                    "score": "4.0000",
+                    "tb1": "24.0000",
+                    "turn": -1,
+                    "group": 3
+                },
+                {
+                    "draw": 5,
+                    "score": "4.0000",
+                    "tb1": "16.0000",
+                    "turn": -1,
+                    "group": 3
+                },
+                {
+                    "draw": 12,
+                    "score": "4.0000",
+                    "tb1": "16.0000",
+                    "turn": 0,
+                    "group": 3
+                },
+                {
+                    "draw": 2,
+                    "score": "4.0000",
+                    "tb1": "34.0000",
+                    "turn": 1,
+                    "group": 3
+                },
+                {
+                    "draw": 6,
+                    "score": "2.0000",
+                    "tb1": "26.0000",
+                    "turn": 0,
+                    "group": 4
+                },
+                {
+                    "draw": 4,
+                    "score": "0.0000",
+                    "tb1": "28.0000",
+                    "turn": 2,
+                    "group": 4
+                }
+            ],
+            "expected_pairs": [
+                {
+                    "a": 3,
+                    "b": 8,
+                    "first": "B",
+                    "sente": 8,
+                    "gote": 3
+                },
+                {
+                    "a": 9,
+                    "b": 1,
+                    "first": "A",
+                    "sente": 9,
+                    "gote": 1
+                },
+                {
+                    "a": 7,
+                    "b": 10,
+                    "first": "B",
+                    "sente": 10,
+                    "gote": 7
+                },
+                {
+                    "a": 11,
+                    "b": 5,
+                    "first": "A",
+                    "sente": 11,
+                    "gote": 5
+                },
+                {
+                    "a": 12,
+                    "b": 2,
+                    "first": "A",
+                    "sente": 12,
+                    "gote": 2
+                },
+                {
+                    "a": 6,
+                    "b": 4,
+                    "first": "A",
+                    "sente": 6,
+                    "gote": 4
+                }
+            ]
+        },
+        {
+            "label": "T42-R5",
+            "source_tournament_id": 42,
+            "target_round": 5,
+            "tournament": {
+                "game_type": "象棋",
+                "num_players": 12,
+                "num_rounds": 6,
+                "win_point": 2,
+                "dan_diff": 0,
+                "same_country_no_pair": false
+            },
+            "players": [
+                {
+                    "draw_no": 1,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 2,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 3,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 4,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 5,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 6,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 7,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 8,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 9,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 10,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 11,
+                    "country": "",
+                    "withdrawn": false
+                },
+                {
+                    "draw_no": 12,
+                    "country": "",
+                    "withdrawn": false
+                }
+            ],
+            "history": [
+                {
+                    "round": 1,
+                    "a": 1,
+                    "b": 2,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 1,
+                    "a": 3,
+                    "b": 4,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 1,
+                    "a": 5,
+                    "b": 6,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 1,
+                    "a": 7,
+                    "b": 8,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 1,
+                    "a": 9,
+                    "b": 10,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 1,
+                    "a": 11,
+                    "b": 12,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 2,
+                    "a": 2,
+                    "b": 3,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 2,
+                    "a": 6,
+                    "b": 7,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 2,
+                    "a": 9,
+                    "b": 11,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 2,
+                    "a": 1,
+                    "b": 4,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 2,
+                    "a": 5,
+                    "b": 8,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 2,
+                    "a": 10,
+                    "b": 12,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 3,
+                    "a": 7,
+                    "b": 3,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 3,
+                    "a": 9,
+                    "b": 2,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 3,
+                    "a": 6,
+                    "b": 8,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 3,
+                    "a": 10,
+                    "b": 1,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 3,
+                    "a": 11,
+                    "b": 4,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 3,
+                    "a": 5,
+                    "b": 12,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                },
+                {
+                    "round": 4,
+                    "a": 9,
+                    "b": 3,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 4,
+                    "a": 11,
+                    "b": 7,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 4,
+                    "a": 8,
+                    "b": 10,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 4,
+                    "a": 6,
+                    "b": 1,
+                    "first": "B",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 4,
+                    "a": 5,
+                    "b": 2,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 0,
+                    "score_b": 2
+                },
+                {
+                    "round": 4,
+                    "a": 12,
+                    "b": 4,
+                    "first": "A",
+                    "memo": null,
+                    "score_a": 2,
+                    "score_b": 0
+                }
+            ],
+            "expected_sorted": [
+                {
+                    "draw": 3,
+                    "score": "8.0000",
+                    "tb1": "16.0000",
+                    "turn": 0,
+                    "group": 1
+                },
+                {
+                    "draw": 9,
+                    "score": "6.0000",
+                    "tb1": "22.0000",
+                    "turn": -1,
+                    "group": 1
+                },
+                {
+                    "draw": 7,
+                    "score": "6.0000",
+                    "tb1": "18.0000",
+                    "turn": 0,
+                    "group": 2
+                },
+                {
+                    "draw": 10,
+                    "score": "6.0000",
+                    "tb1": "16.0000",
+                    "turn": 0,
+                    "group": 2
+                },
+                {
+                    "draw": 11,
+                    "score": "4.0000",
+                    "tb1": "14.0000",
+                    "turn": -1,
+                    "group": 3
+                },
+                {
+                    "draw": 8,
+                    "score": "4.0000",
+                    "tb1": "16.0000",
+                    "turn": 0,
+                    "group": 3
+                },
+                {
+                    "draw": 1,
+                    "score": "4.0000",
+                    "tb1": "12.0000",
+                    "turn": 0,
+                    "group": 3
+                },
+                {
+                    "draw": 2,
+                    "score": "4.0000",
+                    "tb1": "20.0000",
+                    "turn": 1,
+                    "group": 3
+                },
+                {
+                    "draw": 6,
+                    "score": "2.0000",
+                    "tb1": "16.0000",
+                    "turn": 0,
+                    "group": 4
+                },
+                {
+                    "draw": 5,
+                    "score": "2.0000",
+                    "tb1": "12.0000",
+                    "turn": 0,
+                    "group": 4
+                },
+                {
+                    "draw": 12,
+                    "score": "2.0000",
+                    "tb1": "12.0000",
+                    "turn": 0,
+                    "group": 4
+                },
+                {
+                    "draw": 4,
+                    "score": "0.0000",
+                    "tb1": "18.0000",
+                    "turn": 1,
+                    "group": 4
+                }
+            ],
+            "expected_pairs": [
+                {
+                    "a": 3,
+                    "b": 10,
+                    "first": "A",
+                    "sente": 3,
+                    "gote": 10
+                },
+                {
+                    "a": 9,
+                    "b": 7,
+                    "first": "B",
+                    "sente": 7,
+                    "gote": 9
+                },
+                {
+                    "a": 11,
+                    "b": 1,
+                    "first": "B",
+                    "sente": 1,
+                    "gote": 11
+                },
+                {
+                    "a": 8,
+                    "b": 2,
+                    "first": "A",
+                    "sente": 8,
+                    "gote": 2
+                },
+                {
+                    "a": 6,
+                    "b": 12,
+                    "first": "A",
+                    "sente": 6,
+                    "gote": 12
+                },
+                {
+                    "a": 5,
+                    "b": 4,
+                    "first": "B",
+                    "sente": 4,
+                    "gote": 5
+                }
+            ]
+        }
+    ]
+}

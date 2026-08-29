@@ -72,7 +72,7 @@ export default function Home() {
             <Link href="/tournaments">
               <Button className="w-full sm:w-auto">瀏覽賽事</Button>
             </Link>
-            <Link href="/results">
+            <Link href="/ratings/go">
               <Button variant="secondary" className="w-full sm:w-auto">
                 查榜單
               </Button>

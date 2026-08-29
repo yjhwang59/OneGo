@@ -1,9 +1,9 @@
 import type { Pool } from 'pg';
-import type { Match, MatchStatus } from '../store';
+import type { Match, MatchEntryKind, MatchStatus } from '../store';
 import type { NormalizedMatchResult } from '@otc/rules';
 
 const MATCH_COLUMNS =
-  'id, tournament_id, round_no, table_no, category_key, player_a_id, player_b_id, first_move, status, result, started_at, finished_at, created_at, updated_at';
+  'id, tournament_id, round_no, table_no, category_key, player_a_id, player_b_id, first_move, entry_kind, status, result, started_at, finished_at, created_at, updated_at';
 
 function rowToMatch(r: Record<string, unknown>): Match {
   return {
@@ -13,13 +13,14 @@ function rowToMatch(r: Record<string, unknown>): Match {
     tableNo: r.table_no != null ? Number(r.table_no) : undefined,
     categoryKey: r.category_key != null ? (r.category_key as string) : undefined,
     playerAId: r.player_a_id as string,
-    playerBId: r.player_b_id as string,
+    playerBId: r.player_b_id != null ? (r.player_b_id as string) : undefined,
     firstMove: r.first_move != null ? (r.first_move as 'A' | 'B') : undefined,
+    entryKind: ((r.entry_kind as MatchEntryKind) ?? 'normal') as MatchEntryKind,
     status: r.status as MatchStatus,
     result: r.result as NormalizedMatchResult | undefined,
     createdAt: (r.created_at as Date)?.toISOString?.() ?? new Date().toISOString(),
     updatedAt: (r.updated_at as Date)?.toISOString?.() ?? new Date().toISOString(),
-    finishedAt: r.finished_at != null ? (r.finished_at as Date).toISOString() : undefined
+    finishedAt: r.finished_at != null ? (r.finished_at as Date).toISOString() : undefined,
   };
 }
 
@@ -30,15 +31,20 @@ export type CreateMatchParams = {
   tableNo?: number;
   categoryKey?: string;
   playerAId: string;
-  playerBId: string;
+  playerBId?: string;
   firstMove?: 'A' | 'B';
+  entryKind?: MatchEntryKind;
+  status?: MatchStatus;
+  result?: NormalizedMatchResult;
 };
 
 export async function createMatch(pool: Pool, params: CreateMatchParams): Promise<Match> {
   const now = new Date().toISOString();
+  const status = params.status ?? 'scheduled';
+  const entryKind = params.entryKind ?? 'normal';
   await pool.query(
-    `INSERT INTO matches (id, tournament_id, round_no, table_no, category_key, player_a_id, player_b_id, first_move, status, created_at, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'scheduled', $9::timestamptz, $9::timestamptz)`,
+    `INSERT INTO matches (id, tournament_id, round_no, table_no, category_key, player_a_id, player_b_id, first_move, entry_kind, status, result, finished_at, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12::timestamptz, $13::timestamptz, $13::timestamptz)`,
     [
       params.id,
       params.tournamentId,
@@ -46,16 +52,22 @@ export async function createMatch(pool: Pool, params: CreateMatchParams): Promis
       params.tableNo ?? null,
       params.categoryKey ?? null,
       params.playerAId,
-      params.playerBId,
+      params.playerBId ?? null,
       params.firstMove ?? null,
-      now
+      entryKind,
+      status,
+      params.result ? JSON.stringify(params.result) : null,
+      status === 'finished' ? now : null,
+      now,
     ]
   );
   return {
     ...params,
-    status: 'scheduled',
+    entryKind,
+    status,
     createdAt: now,
-    updatedAt: now
+    updatedAt: now,
+    finishedAt: status === 'finished' ? now : undefined,
   } as Match;
 }
 

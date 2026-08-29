@@ -86,13 +86,20 @@ async function buildGroupedStandings(
   const out: Array<Record<string, unknown>> = [];
   for (const [g, participants] of groups) {
     const matches = matchList
-      .filter((m) => m.status === 'finished' && m.result && normalizeGroupKey(m.categoryKey) === g)
-      .map((m) => ({ playerAId: m.playerAId, playerBId: m.playerBId, result: m.result! }));
+      .filter(
+        (m) =>
+          m.status === 'finished' &&
+          m.result &&
+          m.playerBId &&
+          normalizeGroupKey(m.categoryKey) === g
+      )
+      .map((m) => ({ playerAId: m.playerAId, playerBId: m.playerBId!, result: m.result! }));
     const rows = computeStandings({
       participants,
       matches,
       rules,
-      tiebreakOrder: getTiebreakOrderForGame(t.gameKey)
+      tiebreakOrder: getTiebreakOrderForGame(t.gameKey),
+      winPoint: t.winPoint ?? rules.defaultWinPoint,
     });
     for (const row of rows) out.push({ ...row, categoryKey: g ?? null });
   }
@@ -1018,6 +1025,7 @@ app.get('/api/me/record', async (req, reply) => {
     const all = await data.matches.listByTournamentId(tid);
     for (const m of all) {
       if (m.status !== 'finished' || !m.result) continue;
+      if (!m.playerBId) continue; // 輪空不計入個人戰績
       const isA = m.playerAId === userId;
       const isB = m.playerBId === userId;
       if (!isA && !isB) continue;
@@ -1261,10 +1269,13 @@ app.post(
       tableNo: number;
       categoryKey?: string;
       playerAId: string;
-      playerBId: string;
+      playerBId?: string;
       firstMove?: 'A' | 'B';
+      entryKind?: 'normal' | 'bye';
+      status?: 'scheduled' | 'finished';
+      result?: { kind: 'win'; winner: 'A' };
     }> = [];
-    const allByes: string[] = [];
+    const byePoint = t.byePoint ?? t.winPoint ?? rules.defaultWinPoint;
     for (const [groupKey, groupParticipants] of participantsByGroup) {
       if (isRoundRobin) {
         // 循環賽：以穩定籤序產生整份賽程，取第 roundNo 輪
@@ -1280,19 +1291,42 @@ app.post(
               categoryKey: groupKey,
               playerAId: p.playerAId,
               playerBId: p.playerBId,
-              firstMove: p.firstMove
+              firstMove: p.firstMove,
+              entryKind: 'normal',
             });
           }
-          allByes.push(...round.byes);
+          for (const byeId of round.byes) {
+            toCreate.push({
+              tournamentId,
+              roundNo,
+              tableNo: 0,
+              categoryKey: groupKey,
+              playerAId: byeId,
+              entryKind: 'bye',
+              status: 'finished',
+              result: { kind: 'win', winner: 'A' },
+            });
+          }
         }
         continue;
       }
 
       // 瑞士制
       const groupFinished = matchList
-        .filter((m) => m.status === 'finished' && m.result && normGroup(m.categoryKey) === groupKey)
-        .map((m) => ({ playerAId: m.playerAId, playerBId: m.playerBId, result: m.result! }));
-      const standings = computeStandings({ participants: groupParticipants, matches: groupFinished, rules });
+        .filter(
+          (m) =>
+            m.status === 'finished' &&
+            m.result &&
+            m.playerBId &&
+            normGroup(m.categoryKey) === groupKey
+        )
+        .map((m) => ({ playerAId: m.playerAId, playerBId: m.playerBId!, result: m.result! }));
+      const standings = computeStandings({
+        participants: groupParticipants,
+        matches: groupFinished,
+        rules,
+        winPoint: t.winPoint ?? rules.defaultWinPoint,
+      });
       const pointsMap = new Map(standings.map((s) => [s.playerId, s.points]));
       const opponentIdsMap = new Map<string, string[]>();
       for (const pid of groupParticipants) opponentIdsMap.set(pid, []);
@@ -1303,14 +1337,14 @@ app.post(
       const pairingParticipants = groupParticipants.map((playerId) => ({
         playerId,
         currentPoints: pointsMap.get(playerId) ?? 0,
-        opponentIds: opponentIdsMap.get(playerId) ?? []
+        opponentIds: opponentIdsMap.get(playerId) ?? [],
       }));
       const { pairs, byes } = basicSwissPairing(pairingParticipants, { avoidRematches: true });
 
       // 先手平衡：以該組既有對局的先手次數為基準，逐場指派
       const firstMoveCount = new Map<string, number>();
       for (const m of matchList) {
-        if (normGroup(m.categoryKey) !== groupKey || !m.firstMove) continue;
+        if (normGroup(m.categoryKey) !== groupKey || !m.firstMove || !m.playerBId) continue;
         const firstId = m.firstMove === 'A' ? m.playerAId : m.playerBId;
         firstMoveCount.set(firstId, (firstMoveCount.get(firstId) ?? 0) + 1);
       }
@@ -1321,24 +1355,40 @@ app.post(
         toCreate.push({
           tournamentId,
           roundNo,
-          tableNo: 0, // 稍後於全賽事層級連續編號
+          tableNo: 0,
           categoryKey: groupKey,
           playerAId: p.playerAId,
           playerBId: p.playerBId,
-          firstMove
+          firstMove,
+          entryKind: 'normal',
         });
       }
-      allByes.push(...byes);
+      for (const byeId of byes) {
+        toCreate.push({
+          tournamentId,
+          roundNo,
+          tableNo: 0,
+          categoryKey: groupKey,
+          playerAId: byeId,
+          entryKind: 'bye',
+          status: 'finished',
+          result: { kind: 'win', winner: 'A' },
+        });
+      }
     }
 
-    // 桌次於該輪跨組連續編號（全域唯一）
-    toCreate.forEach((m, i) => {
-      m.tableNo = i + 1;
-    });
-    const created = await data.matches.createMany(toCreate);
-    if (allByes.length > 0) {
-      (reply as any).header('X-Pairing-Byes', allByes.join(','));
+    // 桌次於該輪跨組連續編號（全域唯一）；輪空不佔桌號
+    let tableCounter = 0;
+    for (const m of toCreate) {
+      if (m.entryKind === 'bye') {
+        m.tableNo = 0;
+      } else {
+        tableCounter += 1;
+        m.tableNo = tableCounter;
+      }
     }
+    void byePoint; // 輪空結果以 win 正規化；實際給分由 scoresheet 依 byePoint 計算
+    const created = await data.matches.createMany(toCreate);
     return reply.code(201).send(created);
   }
 );
@@ -1399,8 +1449,170 @@ app.post('/api/matches/:id/result', { schema: { body: Type.Object({ result: Type
   if (!rules) return reply.code(400).send({ code: 'UNSUPPORTED_RULESET' });
   const normalized = rules.normalizeMatchResult((req.body as any).result);
   if (!normalized.ok) return reply.code(400).send({ code: normalized.error.code, message: normalized.error.message });
+  const before = m.result ?? null;
   const updated = await data.matches.updateResult(id, normalized.result);
+  await data.scoring.createAudit({
+    matchId: id,
+    resultBefore: before,
+    resultAfter: normalized.result,
+    changedBy: caller.userId,
+  });
   return updated;
+});
+
+// ===== Scoresheet（戰績表）=====
+app.get('/api/tournaments/:tournamentId/scoresheet', async (req, reply) => {
+  const caller = await requireCaller(req, reply);
+  if (!caller) return;
+  const tournamentId = (req.params as any).tournamentId as string;
+  const data = getData();
+  const t = await data.tournaments.get(tournamentId);
+  if (!t) return reply.code(404).send({ code: 'NOT_FOUND' });
+  if (!(await hasOrgAccess(data, caller, t.organizationId)) && !(await hasResultInputAccess(data, caller, t.id)))
+    return reply.code(403).send({ code: 'FORBIDDEN' });
+  const { buildScoresheet } = await import('./scoresheet.js');
+  try {
+    return await buildScoresheet(data, t, (req.query as any)?.categoryKey);
+  } catch (e: any) {
+    if (e?.message === 'UNSUPPORTED_RULESET') return reply.code(400).send({ code: 'UNSUPPORTED_RULESET' });
+    throw e;
+  }
+});
+
+app.post(
+  '/api/tournaments/:tournamentId/scoresheet/batch-results',
+  {
+    schema: {
+      body: Type.Object({
+        items: Type.Array(
+          Type.Object({
+            matchId: Type.String(),
+            result: Type.Any(),
+          })
+        ),
+      }),
+    },
+  },
+  async (req, reply) => {
+    const caller = await requireCaller(req, reply);
+    if (!caller) return;
+    const tournamentId = (req.params as any).tournamentId as string;
+    const data = getData();
+    const t = await data.tournaments.get(tournamentId);
+    if (!t) return reply.code(404).send({ code: 'NOT_FOUND' });
+    if (!(await hasResultInputAccess(data, caller, t.id))) return reply.code(403).send({ code: 'FORBIDDEN' });
+    const guard = canSubmitResult(t.status as any);
+    if (!guard.ok) return reply.code(409).send({ code: guard.code, message: guard.message });
+    const rules = getRulesPlugin({ gameKey: t.gameKey, rulesetVersion: t.rulesetVersion });
+    if (!rules) return reply.code(400).send({ code: 'UNSUPPORTED_RULESET' });
+    const items = (req.body as any).items as Array<{ matchId: string; result: unknown }>;
+    const results: Array<{ matchId: string; ok: boolean; error?: string; match?: Match }> = [];
+    for (const item of items) {
+      const m = await data.matches.get(item.matchId);
+      if (!m || m.tournamentId !== tournamentId) {
+        results.push({ matchId: item.matchId, ok: false, error: 'NOT_FOUND' });
+        continue;
+      }
+      const normalized = rules.normalizeMatchResult(item.result);
+      if (!normalized.ok) {
+        results.push({ matchId: item.matchId, ok: false, error: normalized.error.code });
+        continue;
+      }
+      const before = m.result ?? null;
+      const updated = await data.matches.updateResult(item.matchId, normalized.result);
+      await data.scoring.createAudit({
+        matchId: item.matchId,
+        resultBefore: before,
+        resultAfter: normalized.result,
+        changedBy: caller.userId,
+      });
+      results.push({ matchId: item.matchId, ok: true, match: updated ?? undefined });
+    }
+    return { results };
+  }
+);
+
+app.post(
+  '/api/matches/:id/fouls',
+  {
+    schema: {
+      body: Type.Object({
+        playerId: Type.String(),
+        kind: Type.String(),
+        note: Type.Optional(Type.String()),
+      }),
+    },
+  },
+  async (req, reply) => {
+    const caller = await requireCaller(req, reply);
+    if (!caller) return;
+    const id = (req.params as any).id as string;
+    const data = getData();
+    const m = await data.matches.get(id);
+    if (!m) return reply.code(404).send({ code: 'NOT_FOUND' });
+    const t = await data.tournaments.get(m.tournamentId);
+    if (!t) return reply.code(404).send({ code: 'NOT_FOUND' });
+    if (!(await hasResultInputAccess(data, caller, t.id))) return reply.code(403).send({ code: 'FORBIDDEN' });
+    const body = req.body as { playerId: string; kind: string; note?: string };
+    if (body.playerId !== m.playerAId && body.playerId !== m.playerBId) {
+      return reply.code(400).send({ code: 'INVALID_PLAYER' });
+    }
+    const foul = await data.scoring.createFoul({
+      matchId: id,
+      playerId: body.playerId,
+      kind: body.kind,
+      note: body.note,
+      recordedBy: caller.userId,
+    });
+    return reply.code(201).send(foul);
+  }
+);
+
+app.post(
+  '/api/tournaments/:tournamentId/score-adjustments',
+  {
+    schema: {
+      body: Type.Object({
+        playerId: Type.String(),
+        delta: Type.Number(),
+        reason: Type.String(),
+      }),
+    },
+  },
+  async (req, reply) => {
+    const caller = await requireCaller(req, reply);
+    if (!caller) return;
+    const tournamentId = (req.params as any).tournamentId as string;
+    const data = getData();
+    const t = await data.tournaments.get(tournamentId);
+    if (!t) return reply.code(404).send({ code: 'NOT_FOUND' });
+    if (!(await hasResultInputAccess(data, caller, t.id))) return reply.code(403).send({ code: 'FORBIDDEN' });
+    const body = req.body as { playerId: string; delta: number; reason: string };
+    const adj = await data.scoring.createAdjustment({
+      tournamentId,
+      playerId: body.playerId,
+      delta: body.delta,
+      reason: body.reason,
+      recordedBy: caller.userId,
+    });
+    return reply.code(201).send(adj);
+  }
+);
+
+app.post('/api/tournaments/:tournamentId/events/draw-seeds', async (req, reply) => {
+  const caller = await requireCaller(req, reply);
+  if (!caller) return;
+  const tournamentId = (req.params as any).tournamentId as string;
+  const data = getData();
+  const t = await data.tournaments.get(tournamentId);
+  if (!t) return reply.code(404).send({ code: 'NOT_FOUND' });
+  if (!(await hasTournamentManageAccess(data, caller, t.id))) return reply.code(403).send({ code: 'FORBIDDEN' });
+  if (!['pairing_ready', 'checkin_open', 'in_progress'].includes(t.status)) {
+    return reply.code(409).send({ code: 'INVALID_STATUS', message: '僅報到後／編排前可抽籤' });
+  }
+  const { drawSeeds } = await import('./scoresheet.js');
+  const updated = await drawSeeds(data, tournamentId);
+  return { count: updated.length, registrations: updated };
 });
 
 // ===== Standings =====
@@ -1440,7 +1652,7 @@ async function computeTournamentRatings(data: DataSource, t: Tournament, trigger
   const all = await data.matches.listByTournamentId(t.id);
   // 只計已完成、且 win/draw 的對局（void 不計）
   const rated = all
-    .filter((m) => m.status === 'finished' && m.result)
+    .filter((m) => m.status === 'finished' && m.result && m.playerBId)
     .filter((m) => {
       const k = (m.result as { kind?: string }).kind;
       return k === 'win' || k === 'draw';
@@ -1449,7 +1661,7 @@ async function computeTournamentRatings(data: DataSource, t: Tournament, trigger
 
   const job = await data.ratings.createJob(t.id, gameKey, triggeredBy);
   try {
-    const playerIds = [...new Set(rated.flatMap((m) => [m.playerAId, m.playerBId]))];
+    const playerIds = [...new Set(rated.flatMap((m) => [m.playerAId, m.playerBId!]))];
     const existing = await data.ratings.getPlayerRatings(playerIds, gameKey);
     const prMap = new Map(existing.map((p) => [p.playerId, p]));
     const ratingMap = new Map<string, number>();
@@ -1482,8 +1694,9 @@ async function computeTournamentRatings(data: DataSource, t: Tournament, trigger
 
     for (const m of rated) {
       const res = m.result as { kind: string; winner?: string };
+      const playerBId = m.playerBId!;
       const rA = ratingMap.get(m.playerAId)!;
-      const rB = ratingMap.get(m.playerBId)!;
+      const rB = ratingMap.get(playerBId)!;
       const kA = calculateKFactor(rA, config);
       const kB = calculateKFactor(rB, config);
       const outA: 'win' | 'draw' | 'loss' = res.kind === 'draw' ? 'draw' : res.winner === 'A' ? 'win' : 'loss';
@@ -1491,12 +1704,12 @@ async function computeTournamentRatings(data: DataSource, t: Tournament, trigger
       const nA = clampRating(rA + calculateEloChange({ playerRating: rA, opponentRating: rB, matchResult: outA, kFactor: kA }), config);
       const nB = clampRating(rB + calculateEloChange({ playerRating: rB, opponentRating: rA, matchResult: outB, kFactor: kB }), config);
       ratingMap.set(m.playerAId, nA);
-      ratingMap.set(m.playerBId, nB);
+      ratingMap.set(playerBId, nB);
       applyStat(m.playerAId, outA, nA);
-      applyStat(m.playerBId, outB, nB);
+      applyStat(playerBId, outB, nB);
       history.push(
         { id: '', playerId: m.playerAId, gameKey, matchId: m.id, tournamentId: t.id, ratingBefore: rA, ratingAfter: nA, ratingChange: nA - rA, kFactorUsed: kA, opponentRating: rB, matchResult: outA, calculatedAt: now },
-        { id: '', playerId: m.playerBId, gameKey, matchId: m.id, tournamentId: t.id, ratingBefore: rB, ratingAfter: nB, ratingChange: nB - rB, kFactorUsed: kB, opponentRating: rA, matchResult: outB, calculatedAt: now }
+        { id: '', playerId: playerBId, gameKey, matchId: m.id, tournamentId: t.id, ratingBefore: rB, ratingAfter: nB, ratingChange: nB - rB, kFactorUsed: kB, opponentRating: rA, matchResult: outB, calculatedAt: now }
       );
     }
 

@@ -48,11 +48,17 @@
 - **finished**：已結束（有結果）
 - **void**：作廢（例如編排調整）
 
+### 5.1 結果上傳與改判
+- 僅 `Tournament.status = in_progress` 可上傳／改判結果（`canSubmitResult`）
+- `finished → finished`（改判）允許：寫入 `match_result_audits`（`result_before` / `result_after`）
+- 輪空對局於編排時即以 `entry_kind=bye`、`status=finished` 落地，不需裁判再輸入
+
 ## 6. 核心不變量（Invariants，草案）
 - 只有在 Tournament 狀態允許時，才能：
   - 建立/變更報名（published/checkin_open）
   - 變更報到（checkin_open）
   - 產生編排與 Match（pairing_ready/in_progress）
   - 上傳結果（in_progress）
+  - 抽籤（checkin_open / pairing_ready / in_progress）
 
 

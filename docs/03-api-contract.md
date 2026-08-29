@@ -126,26 +126,39 @@ Request（皆可選）：
 
 - `POST /api/tournaments/:tournamentId/pairings/events/generate-round`
   - Request：`roundNo`
-  - Response：建立的 `Match[]`
-  - 若有輪空選手，Response Header：`X-Pairing-Byes`（逗號分隔 playerId）
+  - Response：建立的 `Match[]`（含 `entry_kind=bye` 的輪空列，已 finished 並給輪空勝結果）
+- `POST /api/tournaments/:tournamentId/events/draw-seeds`
+  - 為已報到者依組別亂數分配 `seedNo`
 
 ## 8. Matches（對局/成績上傳）
 - `GET /api/tournaments/:tournamentId/matches?roundNo=`
 - `POST /api/matches/:id/result`
-  - Request：`result`（由 rules 外掛定義的正規化結果）
-  - 行為：校驗 result -> 更新 Match 狀態為 finished
+  - Request：`result`（由 rules 外掛定義的正規化結果；`by` 可含 `absence` / `foul_limit`）
+  - 行為：校驗 result → 更新 Match 為 finished；改判時寫入 `match_result_audits`
+- `POST /api/matches/:id/fouls`
+  - Request：`playerId`, `kind`, `note?` — 技術犯規計次
+
+## 8.0 Scoresheet（戰績表）
+- `GET /api/tournaments/:tournamentId/scoresheet?categoryKey=`
+  - 回傳整組戰績表：選手（籤號／姓名）、每輪 cell（score／對手籤號／side）、總分／名次／輔分、`tiebreakSpec`、`usedTiebreakCount`、`winPoint`
+- `POST /api/tournaments/:tournamentId/scoresheet/batch-results`
+  - Request：`{ items: [{ matchId, result }] }` — 離線補傳；逐筆回傳成功／失敗
+- `POST /api/tournaments/:tournamentId/score-adjustments`
+  - Request：`playerId`, `delta`, `reason` — 總成績加減分
+
+詳見 [docs/18-scoring-subsystem.md](./18-scoring-subsystem.md)。
 
 ## 8.1 ELO 等級分（Phase 1；詳見 [docs/08](08-rating-system.md)）
 
 - `POST /api/tournaments/:id/calculate-ratings`（`hasTournamentManageAccess`）
   - 依本賽事已完成對局逐場套 ELO 並更新棋手等級分；回 `{ matchesProcessed, playersAffected }`
-  - 冪等：同賽事已計算過回 `409 ALREADY_RATED`（MVP 不支援重算）；`void` 對局不計
+  - 冪等：同賽事已計算過回 `409 ALREADY_RATED`（MVP 不支援重算）；`void`／輪空對局不計
 - `GET /api/ratings/:gameKey/leaderboard?limit=&offset=`（公開）：依 `current_rating` 遞減
 - `GET /api/players/:id/ratings/:gameKey`（公開）：`{ rating, history[] }`（單棋種當前分與變化紀錄）
 
 ## 9. Standings（排名）
 - `GET /api/tournaments/:tournamentId/standings`
-  - 回傳：依 rules 計分，同分時依 tiebreak 順序（預設：勝場數、直接勝負、對手分 Buchholz）；每筆含 `tiebreaks?: { wins, head_to_head, opponent_score }`
+  - 回傳：依 `packages/scoring` + RulesPlugin.tiebreakSpec 計分；每筆含 `tiebreaks` 與可選 `rank`
 
 ## 10. Tournament Roles（賽事層級指派：裁判/工作人員）
 > 需求：同一位裁判可被指派到多個賽事，**只要賽事時間區間不重疊**。MVP 先由 API 在指派時檢查。

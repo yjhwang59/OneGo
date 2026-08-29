@@ -1,36 +1,24 @@
-import type { NormalizedMatchResult, RulesPlugin, ValidateError, ValidateResult } from '../../types';
+import type { TiebreakSpec, TiebreakSpecContext } from '../../types';
+import { applySosCut, makeRulesPlugin } from '../_shared';
 
-function ok(): ValidateResult {
-  return { ok: true };
+function tiebreakSpec(ctx?: TiebreakSpecContext): TiebreakSpec[] {
+  return applySosCut(
+    [
+      { id: 'sos', label: '輔一', tip: '所有對手的總分和' },
+      {
+        id: 'sodos_lost',
+        label: '輔二',
+        tip: '所負對手總分和（Sched 圍棋現行：對手得分≥勝分時累加對手總分）',
+      },
+      { id: 'head_to_head', label: '輔三', tip: '同分組彼此對戰成績（需單一連通）' },
+      { id: 'sosos', label: '輔四', tip: '所有對手的輔一（sos）之和' },
+    ],
+    ctx
+  );
 }
 
-function err(code: string, message: string): ValidateError {
-  return { ok: false, code, message };
-}
-
-export const goRulesV1: RulesPlugin = {
+export const goRulesV1 = makeRulesPlugin({
   gameKey: 'go',
-  rulesetVersion: 'v1',
-  validateMatchResult(input: unknown): ValidateResult {
-    if (typeof input !== 'object' || input === null) return err('INVALID', 'result 必須是物件');
-    const kind = (input as any).kind;
-    if (kind !== 'win' && kind !== 'draw' && kind !== 'void') return err('INVALID_KIND', 'kind 不合法');
-    return ok();
-  },
-  normalizeMatchResult(input: unknown) {
-    const v = this.validateMatchResult(input);
-    if (!v.ok) return { ok: false as const, error: v };
-    return { ok: true as const, result: input as NormalizedMatchResult };
-  },
-  scoreMatch({ result }: { result: NormalizedMatchResult }) {
-    if (result.kind === 'win') {
-      return result.winner === 'A'
-        ? { A: { points: 1 }, B: { points: 0 } }
-        : { A: { points: 0 }, B: { points: 1 } };
-    }
-    if (result.kind === 'draw') return { A: { points: 0.5 }, B: { points: 0.5 } };
-    return { A: { points: 0 }, B: { points: 0 } };
-  }
-};
-
-
+  defaultWinPoint: 1,
+  tiebreakSpec,
+});

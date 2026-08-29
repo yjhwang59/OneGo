@@ -37,6 +37,12 @@ export type Tournament = {
   timezone: string;
   format: string;
   roundCount: number;
+  /** 勝分；預設依棋種（象棋常為 2） */
+  winPoint?: number;
+  /** 輪空給分；未設則同 winPoint */
+  byePoint?: number | null;
+  /** 對手分取捨：只取最高 N 輪（觀音盃段位組=7） */
+  sosKeepTop?: number | null;
   startsAt?: string;
   endsAt?: string;
   status: TournamentStatus;
@@ -73,6 +79,8 @@ export type Registration = {
   userId: Id;
   status: RegistrationStatus;
   categoryKey?: string;
+  /** 籤號（戰績表顯示／抽籤） */
+  seedNo?: number | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -104,6 +112,8 @@ export type CheckIn = {
 
 export type MatchStatus = 'scheduled' | 'playing' | 'finished' | 'void';
 
+export type MatchEntryKind = 'normal' | 'bye' | 'absent';
+
 export type Match = {
   id: Id;
   tournamentId: Id;
@@ -112,14 +122,46 @@ export type Match = {
   /** 對局所屬組別（分組賽事）；未分組賽事為 undefined（單一組） */
   categoryKey?: string;
   playerAId: Id;
-  playerBId: Id;
+  /** 對手；輪空／缺席時為 undefined */
+  playerBId?: Id;
   /** 先手方（A/B）；輪空/未指定為 undefined */
   firstMove?: 'A' | 'B';
+  /** normal=一般對局；bye=輪空；absent=缺席占位 */
+  entryKind?: MatchEntryKind;
   status: MatchStatus;
   result?: NormalizedMatchResult;
   createdAt: string;
   updatedAt: string;
   finishedAt?: string;
+};
+
+export type MatchFoul = {
+  id: Id;
+  matchId: Id;
+  playerId: Id;
+  kind: string;
+  note?: string | null;
+  recordedBy: Id;
+  createdAt: string;
+};
+
+export type ScoreAdjustment = {
+  id: Id;
+  tournamentId: Id;
+  playerId: Id;
+  delta: number;
+  reason: string;
+  recordedBy: Id;
+  createdAt: string;
+};
+
+export type MatchResultAudit = {
+  id: Id;
+  matchId: Id;
+  resultBefore?: NormalizedMatchResult | null;
+  resultAfter: NormalizedMatchResult;
+  changedBy: Id;
+  createdAt: string;
 };
 
 export type UserStatus = 'active' | 'suspended';
@@ -192,6 +234,9 @@ export class InMemoryStore {
   payments = new Map<Id, Payment>();
   checkins = new Map<Id, CheckIn>();
   matches = new Map<Id, Match>();
+  matchFouls = new Map<Id, MatchFoul>();
+  scoreAdjustments = new Map<Id, ScoreAdjustment>();
+  matchResultAudits = new Map<Id, MatchResultAudit>();
   /** rating: key = `${playerId}:${gameKey}` */
   playerRatings = new Map<string, PlayerRatingRow>();
   ratingHistory = new Map<Id, RatingHistoryRow>();

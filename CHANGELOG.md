@@ -4,6 +4,16 @@
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-29
+### Added
+- **成績計算子系統**（移植 Sched + 觀音盃規則）：
+  - 新增 `packages/scoring`：輔分引擎、H2H 連通性、對手分取捨、同分同名次、`usedTiebreakCount`。
+  - `RulesPlugin` 擴充 `defaultWinPoint`、`tiebreakSpec()`；象棋預設勝分 2。
+  - 戰績表 API：`GET scoresheet`、`POST batch-results`、`POST fouls`、`POST score-adjustments`、`POST draw-seeds`。
+  - 輪空落地為 `entry_kind=bye`；籤號 `seed_no`；改判 audit。
+  - 裁判頁改為整組戰績表（`/referee/[id]`），逐桌視圖移至 `/tables`。
+  - 文件：`docs/18-scoring-subsystem.md`；同步 domain / 狀態機 / API 契約與 `db/schema/otc.sql`。
+
 ## [0.1.0] - 2026-07-09
 ### Added
 - **賽事成績匯入**：`2025 XYZ圍棋公開賽`（19 組、723 名棋手、1837 場對局）自 CSV 匯入本機 DB。

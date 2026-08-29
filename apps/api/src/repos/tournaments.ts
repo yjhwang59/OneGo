@@ -11,6 +11,9 @@ function rowToTournament(r: Record<string, unknown>): Tournament {
     timezone: (r.timezone as string) ?? 'UTC',
     format: r.format as string,
     roundCount: Number(r.round_count),
+    winPoint: r.win_point != null ? Number(r.win_point) : undefined,
+    byePoint: r.bye_point != null ? Number(r.bye_point) : null,
+    sosKeepTop: r.sos_keep_top != null ? Number(r.sos_keep_top) : null,
     startsAt: r.starts_at != null ? (r.starts_at as Date).toISOString() : undefined,
     endsAt: r.ends_at != null ? (r.ends_at as Date).toISOString() : undefined,
     status: r.status as TournamentStatus,
@@ -64,7 +67,9 @@ export async function createTournament(
 
 export async function getTournament(pool: Pool, id: string): Promise<Tournament | null> {
   const r = await pool.query(
-    'SELECT id, organization_id, name, game_key, ruleset_version, timezone, format, round_count, starts_at, ends_at, status, created_at, updated_at FROM tournaments WHERE id = $1',
+    `SELECT id, organization_id, name, game_key, ruleset_version, timezone, format, round_count,
+            win_point, bye_point, sos_keep_top, starts_at, ends_at, status, created_at, updated_at
+       FROM tournaments WHERE id = $1`,
     [id]
   );
   if (r.rows.length === 0) return null;
@@ -92,6 +97,9 @@ export type TournamentUpdateParams = {
   timezone?: string;
   format?: string;
   roundCount?: number;
+  winPoint?: number;
+  byePoint?: number | null;
+  sosKeepTop?: number | null;
   startsAt?: string | null;
   endsAt?: string | null;
 };
@@ -110,14 +118,18 @@ export async function updateTournament(
   const timezone = params.timezone ?? existing.timezone;
   const format = params.format ?? existing.format;
   const roundCount = params.roundCount ?? existing.roundCount;
+  const winPoint = params.winPoint ?? existing.winPoint ?? 1;
+  const byePoint = params.byePoint !== undefined ? params.byePoint : existing.byePoint ?? null;
+  const sosKeepTop = params.sosKeepTop !== undefined ? params.sosKeepTop : existing.sosKeepTop ?? null;
   const startsAt = params.startsAt !== undefined ? params.startsAt : existing.startsAt;
   const endsAt = params.endsAt !== undefined ? params.endsAt : existing.endsAt;
   await pool.query(
     `UPDATE tournaments SET
       name = $1, game_key = $2, ruleset_version = $3, timezone = $4, format = $5, round_count = $6,
-      starts_at = $7::timestamptz, ends_at = $8::timestamptz, updated_at = $9::timestamptz
-    WHERE id = $10`,
-    [name, gameKey, rulesetVersion, timezone, format, roundCount, startsAt ?? null, endsAt ?? null, now, id]
+      win_point = $7, bye_point = $8, sos_keep_top = $9,
+      starts_at = $10::timestamptz, ends_at = $11::timestamptz, updated_at = $12::timestamptz
+    WHERE id = $13`,
+    [name, gameKey, rulesetVersion, timezone, format, roundCount, winPoint, byePoint, sosKeepTop, startsAt ?? null, endsAt ?? null, now, id]
   );
   return getTournament(pool, id);
 }
@@ -150,8 +162,9 @@ export async function listTournaments(
     idx++;
   }
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  const selectCols = `id, organization_id, name, game_key, ruleset_version, timezone, format, round_count, win_point, bye_point, sos_keep_top, starts_at, ends_at, status, created_at, updated_at`;
   const r = await pool.query(
-    `SELECT id, organization_id, name, game_key, ruleset_version, timezone, format, round_count, starts_at, ends_at, status, created_at, updated_at FROM tournaments ${where}`,
+    `SELECT ${selectCols} FROM tournaments ${where}`,
     values
   );
   return r.rows.map((row) => rowToTournament(row));
@@ -181,8 +194,9 @@ export async function listPublicTournaments(
     values.push(`%${filters.keyword.trim()}%`);
     idx++;
   }
+  const selectCols = `id, organization_id, name, game_key, ruleset_version, timezone, format, round_count, win_point, bye_point, sos_keep_top, starts_at, ends_at, status, created_at, updated_at`;
   const r = await pool.query(
-    `SELECT id, organization_id, name, game_key, ruleset_version, timezone, format, round_count, starts_at, ends_at, status, created_at, updated_at FROM tournaments WHERE ${conditions.join(' AND ')}`,
+    `SELECT ${selectCols} FROM tournaments WHERE ${conditions.join(' AND ')}`,
     values
   );
   return r.rows.map((row) => rowToTournament(row));

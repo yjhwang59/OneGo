@@ -1,4 +1,4 @@
-import { proxyToOtc, getUserIdFromRequest } from "../../../../_lib";
+import { proxyToOtc, getUserIdFromRequest } from "@/app/api/otc/_lib";
 
 export const runtime = "nodejs";
 
